@@ -156,3 +156,27 @@ export async function getLatestWeightKg() {
   const weight = Number(latest?.weight);
   return Number.isFinite(weight) && weight >= 10 && weight <= 500 ? weight : null;
 }
+
+// =========================================================================
+// ALIAS COMPATIBILITY (Mencegah crash jika mapscreen lama memanggil fungsi ini)
+// =========================================================================
+export const getStepLength = async () => 60;
+
+export async function addNormalizedActivity(item) {
+  const distanceKm = Number(item?.distanceKm) || (Number(item?.distance) || 0) / 1000;
+  const durationSec = Math.max(1, Math.round(Number(item?.duration) || 0));
+  const speed = durationSec > 0 ? distanceKm / (durationSec / 3600) : 0;
+
+  return addActivityEntry({
+    activity: 'walk',
+    label: item?.activityType || 'Jalan Kaki',
+    km: Number(distanceKm.toFixed(3)),
+    durationSec,
+    calories: Math.round(Number(item?.calories) || 0),
+    pace: item?.pace || '--:--',
+    speed: Number(speed.toFixed(2)),
+    steps: item?.steps || 0,
+    route: item?.route || [],
+    date: item?.date || new Date().toISOString(),
+  });
+}

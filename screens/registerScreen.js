@@ -132,7 +132,7 @@ export default function RegisterScreen({ theme: t, onRegister, onBackToLogin }) 
               icon="mail-outline"
               value={email}
               onChangeText={setEmail}
-              placeholder="nama@email.com"
+              placeholder="Masukkan email"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}

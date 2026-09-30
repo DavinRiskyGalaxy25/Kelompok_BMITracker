@@ -1,14 +1,5 @@
 /**
- * Vitra — Root (Multi-Screen, state routing tanpa React Navigation)
- *
- * Install dependencies:
- *   npx expo install @react-native-async-storage/async-storage react-native-safe-area-context \
- *     @expo-google-fonts/syne expo-font @expo/vector-icons expo-location expo-sharing \
- *     react-native-webview react-native-view-shot
- *
- * Rekaman GPS: state ada di hooks/useTracker.js (TrackerProvider), bukan di screen.
- *
- * Navigasi: setiap screen menerima `setActiveScreen('home' | 'bmi' | 'activity' | 'map' | 'history' | 'profile')`.
+ * Vitra — Root (Multi-Screen, state routing dengan Persistent Bottom Navigation Bar)
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
@@ -20,12 +11,12 @@ import LoginScreen from './screens/loginscreen';
 import RegisterScreen from './screens/registerscreen';
 
 import HomeScreen from './screens/homescreen';
+import StopwatchScreen from './screens/stopwatchscreen';
+import RecordScreen from './screens/activityscreen';
 import BMIScreen from './screens/bmiscreen';
-import ActivityScreen from './screens/activityscreen';
-import MapScreen from './screens/mapscreen';
-import HistoryScreen from './screens/historyscreen';
 import ProfileScreen from './screens/profilescreen';
 
+import BottomNavBar from './components/BottomNavBar';
 import { TrackerProvider } from './hooks/usetracker';
 import {
   getSession,
@@ -53,7 +44,6 @@ const THEMES = {
   },
 };
 
-// Warna semantik kategori BMI (sama di mode terang/gelap). Dipakai lewat `theme.bmi[kategori]`.
 const BMI_COLORS = {
   underweight: '#0EA5E9',
   normal: '#22C55E',
@@ -61,20 +51,16 @@ const BMI_COLORS = {
   obese: '#EF4444',
 };
 
-// Daftar screen yang valid. Key di sini = argumen setActiveScreen().
+// Daftar 5 menu utama aplikasi
 const SCREENS = {
   home: HomeScreen,
+  stopwatch: StopwatchScreen,
+  record: RecordScreen,
   bmi: BMIScreen,
-  activity: ActivityScreen,
-  map: MapScreen,
-  history: HistoryScreen,
   profile: ProfileScreen,
 };
 
-/**
- * Token tema Vitra (bg, card, primary, text, sub, border, input, danger)
- * + token pendukung (onPrimary, shadow, isDark, fontBrand).
- */
+// Di App.js
 const buildTheme = (isDark) => {
   const base = isDark ? THEMES.dark : THEMES.light;
 
@@ -82,25 +68,29 @@ const buildTheme = (isDark) => {
     ...base,
     isDark,
     bmi: BMI_COLORS,
-    // Sama dengan App.js lama: iOS memakai Avenir-Heavy, Android memakai Syne.
-    // Ganti ke 'Syne_800ExtraBold' saja bila ingin Syne di semua platform.
-    fontBrand: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'Syne_800ExtraBold',
 
-    // LEGACY ALIAS — hanya agar screen lama (Splash/Login/Register/BMI/dst.) tetap
-    // terbaca selama migrasi. Hapus blok ini setelah semua screen memakai token Vitra.
-    background: base.bg,
-    secondary: base.sub,
-    cardSoft: base.input,
-    pink: base.primary,
-    pinkLight: base.primary,
-    neon: base.primary,
+    // 1. Font Judul Brand (Mirip Strava, tegas & sporty, bawaan sistem tanpa perlu install)
+    fontBrand: Platform.select({
+      ios: 'HelveticaNeue-CondensedBlack',
+      android: 'sans-serif-condensed',
+    }),
+
+    // 2. Font Monospace untuk seluruh teks aplikasi (Bawaan sistem)
+    fontMono: Platform.select({
+      ios: 'Courier',
+      android: 'monospace',
+    }),
+
+    fontRegular: Platform.select({
+      ios: 'Courier',
+      android: 'monospace',
+    }),
   };
 };
 
 /* --------------------------------- App --------------------------------- */
 
 export default function App() {
-  // Semua hook dipanggil tanpa syarat di atas (tidak ada early return sebelum hook).
   const systemScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({ Syne_800ExtraBold });
 
@@ -108,12 +98,11 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState('login'); // 'login' | 'register'
   const [activeScreen, setActiveScreen] = useState('home');
-  const [themeMode, setThemeMode] = useState(null); // null = ikuti tema sistem
+  const [themeMode, setThemeMode] = useState(null);
 
   const darkMode = themeMode ? themeMode === 'dark' : systemScheme === 'dark';
   const theme = useMemo(() => buildTheme(darkMode), [darkMode]);
 
-  // Bila font gagal dimuat, lanjut dengan font sistem daripada memblokir app.
   const fontsSettled = fontsLoaded || Boolean(fontError);
   const ready = !booting && fontsSettled;
 
@@ -148,7 +137,6 @@ export default function App() {
     setActiveScreen(Object.prototype.hasOwnProperty.call(SCREENS, screen) ? screen : 'home');
   }, []);
 
-  // Tombol back Android: kembali ke Home / Login, bukan langsung keluar app.
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (user && activeScreen !== 'home') {
@@ -167,7 +155,6 @@ export default function App() {
 
   /* -------------------------------- Session ------------------------------- */
 
-  // Hanya name & email yang disimpan. Password tidak pernah masuk ke sesi.
   const startSession = useCallback(async (profile) => {
     const session = {
       name: String(profile?.name ?? '').trim() || DEFAULT_USER_NAME,
@@ -206,46 +193,37 @@ export default function App() {
 
   /* --------------------------------- Render -------------------------------- */
 
-  let content;
-
   if (!ready) {
-    // Splash baru dirender setelah font siap agar brand tampil dengan Syne sejak frame pertama.
-    content = fontsSettled ? <SplashScreen theme={theme} /> : null;
-  } else if (!user) {
-    content =
-      authView === 'register' ? (
-        <RegisterScreen
-          theme={theme}
-          onRegister={startSession}
-          onBackToLogin={() => setAuthView('login')}
-        />
-      ) : (
-        <LoginScreen
-          theme={theme}
-          onLogin={startSession}
-          onRegister={() => setAuthView('register')}
-        />
-      );
-  } else {
-    const ActiveScreen = SCREENS[activeScreen] || HomeScreen;
+    return fontsSettled ? <SplashScreen theme={theme} /> : null;
+  }
 
-    // TrackerProvider berada di atas screen (tanpa `key`) sehingga rekaman GPS tetap berjalan
-    // saat berpindah screen. Saat logout provider ikut di-unmount dan rekaman dihentikan.
-    content = (
-      <TrackerProvider>
-        <ActiveScreen
-          key={activeScreen}
-          theme={theme}
-          user={user}
-          darkMode={darkMode}
-          setDarkMode={handleDarkModeChange}
-          onLogout={handleLogout}
-          onUpdateUser={handleUpdateUser}
-          setActiveScreen={navigate}
-        />
-      </TrackerProvider>
+  if (!user) {
+    return (
+      <SafeAreaProvider>
+        <View style={[styles.root, { backgroundColor: theme.bg }]}>
+          <StatusBar
+            barStyle={darkMode ? 'light-content' : 'dark-content'}
+            backgroundColor={theme.bg}
+          />
+          {authView === 'register' ? (
+            <RegisterScreen
+              theme={theme}
+              onRegister={startSession}
+              onBackToLogin={() => setAuthView('login')}
+            />
+          ) : (
+            <LoginScreen
+              theme={theme}
+              onLogin={startSession}
+              onRegister={() => setAuthView('register')}
+            />
+          )}
+        </View>
+      </SafeAreaProvider>
     );
   }
+
+  const ActiveScreen = SCREENS[activeScreen] || HomeScreen;
 
   return (
     <SafeAreaProvider>
@@ -254,7 +232,28 @@ export default function App() {
           barStyle={darkMode ? 'light-content' : 'dark-content'}
           backgroundColor={theme.bg}
         />
-        {content}
+        <TrackerProvider>
+          {/* Viewport Konten Layar Aktif */}
+          <View style={styles.screenContainer}>
+            <ActiveScreen
+              key={activeScreen}
+              theme={theme}
+              user={user}
+              darkMode={darkMode}
+              setDarkMode={handleDarkModeChange}
+              onLogout={handleLogout}
+              onUpdateUser={handleUpdateUser}
+              setActiveScreen={navigate}
+            />
+          </View>
+
+          {/* PERSISTENT BOTTOM NAVBAR (Terkunci di bawah, tidak berkedip) */}
+          <BottomNavBar
+            activeScreen={activeScreen}
+            setActiveScreen={navigate}
+            theme={theme}
+          />
+        </TrackerProvider>
       </View>
     </SafeAreaProvider>
   );
@@ -262,4 +261,5 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  screenContainer: { flex: 1 },
 });

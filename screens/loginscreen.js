@@ -123,7 +123,7 @@ export default function LoginScreen({ theme: t, onLogin, onRegister }) {
               icon="mail-outline"
               value={email}
               onChangeText={setEmail}
-              placeholder="nama@email.com"
+              placeholder="Masukkan email"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -205,10 +205,11 @@ const createStyles = (t) =>
 
     header: { marginBottom: 28 },
     appName: {
-      fontSize: 28,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-      fontFamily: t.fontBrand,
+      fontSize: 32,
+      fontWeight: '900',
+      fontFamily: t.fontBrand, // Otomatis Strava style di Android & iPhone
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
       color: t.text,
     },
     tagline: { fontSize: 14, color: t.sub, marginTop: 6 },

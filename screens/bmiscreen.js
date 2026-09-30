@@ -21,7 +21,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-
 import ScreenHeader from '../components/ScreenHeader';
 import { Btn, Card, Field, Segment } from '../components/ui';
 import {
@@ -92,8 +91,6 @@ export default function BMIScreen({ theme: t, setActiveScreen }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <ScreenHeader theme={t} title="IMT / BMI" onBack={goHome} />
-
             <Card theme={t}>
               <Segment
                 theme={t}
@@ -157,7 +154,7 @@ export default function BMIScreen({ theme: t, setActiveScreen }) {
                 <Card theme={t} style={s.resultCard}>
                   <View style={s.bmiTop}>
                     <View>
-                      <Text style={s.fieldLabel}>BMI Anda</Text>
+                      <Text style={s.fieldLabel}>IMT Anda</Text>
                       <Text style={s.bmiValue}>{result.bmi.toFixed(1)}</Text>
                     </View>
                     <View style={[s.badge, { backgroundColor: categoryColor }]}>
@@ -246,7 +243,7 @@ const createStyles = (t) =>
       borderRadius: 8,
       marginLeft: -8,
       backgroundColor: t.card,
-      borderWidth: 0,
+      borderWidth: 1,
       borderColor: t.text,
     },
     metaLine: { fontSize: 12, color: t.sub, marginTop: 4, lineHeight: 18 },
