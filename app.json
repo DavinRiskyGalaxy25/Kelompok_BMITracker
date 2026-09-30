@@ -24,19 +24,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
-        "expo-splash-screen",
+        "expo-location",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "locationWhenInUsePermission": "PacePulse memerlukan akses lokasi untuk merekam rute aktivitas."
         }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
+      ],
+      "expo-sharing",
+      "expo-font",
+      "expo-router"
+    ]
   }
 }
