@@ -2,6 +2,7 @@
   "expo": {
     "name": "Kelompok_BMITracker",
     "slug": "Kelompok_BMITracker",
+    "owner": "davinrisky.sci",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
