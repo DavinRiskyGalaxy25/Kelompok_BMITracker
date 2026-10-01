@@ -11,6 +11,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.kelompokbmitracker.app", 
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -33,6 +34,11 @@
       "expo-sharing",
       "expo-font",
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a0adcf53-da5b-48da-af48-aae0e3e49516"
+      }
+    }
   }
 }
