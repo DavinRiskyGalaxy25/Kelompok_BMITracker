@@ -1,5 +1,5 @@
 /**
- * Vitra — logika kalkulator IMT/BMI (dipindah dari App.js lama tanpa perubahan rumus).
+ * vstride — logika kalkulator IMT/BMI (dipindah dari App.js lama tanpa perubahan rumus).
  *
  * File ini murni logika (tanpa React, tanpa warna). Warna kategori diambil dari
  * `theme.bmi[category]` yang didefinisikan di App.js.

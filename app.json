@@ -1,21 +1,26 @@
 {
   "expo": {
-    "name": "Kelompok_BMITracker",
-    "slug": "Kelompok_BMITracker",
+    "name": "VStride",
+    "slug": "VStride-BMITracker",
     "owner": "davinrisky.sci",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "kelompokbmitracker",
+    "icon": "./assets/images/icon.jpeg",
+    "splash": {
+          "image": "./assets/images/icon.jpeg",
+          "resizeMode": "contain",
+          "backgroundColor": "#0F172A"
+        },
+    "scheme": "VStrideapp",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
-      "package": "com.kelompokbmitracker.app", 
+      "package": "com.vstride.bmitracker", 
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#0F172A",
+        "foregroundImage": "./assets/images/android-icon-foreground.jpeg",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -23,7 +28,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.jpeg"
     },
     "plugins": [
       [

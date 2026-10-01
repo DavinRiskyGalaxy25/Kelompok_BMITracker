@@ -1,5 +1,5 @@
 /**
- * Vitra — komponen UI bersama (dipindah dari App.js lama tanpa perubahan tampilan).
+ * vstride — komponen UI bersama (dipindah dari App.js lama tanpa perubahan tampilan).
  *
  * Semua komponen menerima prop `theme` dari App.js dan tidak memakai warna hardcoded.
  * Style dibuat sekali per objek theme (WeakMap), bukan per instance komponen.
@@ -10,7 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 /* --------------------------------- Shared --------------------------------- */
 
-/** Gaya kartu Vitra: radius 16, tanpa border, shadow lembut (hanya di mode terang). */
+/** Gaya kartu vstride: radius 16, tanpa border, shadow lembut (hanya di mode terang). */
 export const getCardStyle = (theme) => ({
   backgroundColor: theme.card,
   borderRadius: 16,

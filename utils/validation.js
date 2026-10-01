@@ -1,5 +1,5 @@
 /**
- * Vitra — validasi form (dipakai LoginScreen dan RegisterScreen).
+ * vstride — validasi form (dipakai LoginScreen dan RegisterScreen).
  *
  * Validasi di sisi klien hanya untuk UX. Saat backend tersedia, aturan yang sama
  * WAJIB diulang di server; jangan pernah mengandalkan validasi klien untuk keamanan.

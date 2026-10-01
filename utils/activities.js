@@ -1,5 +1,5 @@
 /**
- * Vitra — definisi aktivitas.
+ * vstride — definisi aktivitas.
  *
  * `met` dan rumus kalori sama dengan App.js lama.
  * `gps` = profil filter untuk merapikan jejak (lihat utils/gps.js):

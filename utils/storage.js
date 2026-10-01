@@ -1,5 +1,5 @@
 /**
- * Vitra — Storage helper (AsyncStorage)
+ * vstride — Storage helper (AsyncStorage)
  *
  * Install:
  *   npx expo install @react-native-async-storage/async-storage
@@ -17,10 +17,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 /* --------------------------------- Keys --------------------------------- */
 
 export const STORAGE_KEYS = {
-  session: '@vitra_session',
-  theme: '@vitra_theme',
-  bmiHistory: '@vitra_bmi_history_v1',
-  activityHistory: '@vitra_activity_history_v1',
+  session: '@vstride_session',
+  theme: '@vstride_theme',
+  bmiHistory: '@vstride_bmi_history_v1',
+  activityHistory: '@vstride_activity_history_v1',
 };
 
 const VALID_THEMES = ['light', 'dark'];

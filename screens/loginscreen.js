@@ -1,8 +1,8 @@
 /**
- * LoginScreen — Vitra
+ * LoginScreen — vstride
  *
  * Props:
- *  - theme       token tema Vitra dari App.js
+ *  - theme       token tema vstride dari App.js
  *  - onLogin     async ({ name, email }) => void   (password TIDAK diteruskan)
  *  - onRegister  () => void                         (pindah ke form pendaftaran)
  *
@@ -32,12 +32,12 @@ import {
   validateLogin,
 } from '../utils/validation';
 
-const APP_NAME = 'Vitra';
-const DEFAULT_USER_NAME = 'Vitra User';
+const APP_NAME = 'VSTRIDE';
+const DEFAULT_USER_NAME = 'VSTRIDE User';
 
 // Hanya untuk development. Blok yang memakainya dibungkus __DEV__ sehingga
 // dihapus dari build produksi dan kredensial ini tidak ikut terkirim.
-const DEMO_ACCOUNT = { email: 'demo@vitra.app', password: 'demo12345' };
+const DEMO_ACCOUNT = { email: 'demo@vstride.app', password: 'demo12345' };
 
 export default function LoginScreen({ theme: t, onLogin, onRegister }) {
   const s = useMemo(() => createStyles(t), [t]);

@@ -1,5 +1,5 @@
 /**
- * Vitra — helper format tampilan (dipindah dari App.js lama).
+ * vstride — helper format tampilan (dipindah dari App.js lama).
  */
 
 const pad = (n) => String(n).padStart(2, '0');

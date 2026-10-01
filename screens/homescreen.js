@@ -15,6 +15,7 @@ import { formatDateTime, formatDuration } from '../utils/format';
 import { getActivityHistory } from '../utils/storage';
 
 const DAYS_NAME = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const DAYS_NAME_SHORT = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
 
 const getGreeting = (hour = new Date().getHours()) => {
   if (hour < 11) return 'Selamat pagi';
@@ -22,6 +23,25 @@ const getGreeting = (hour = new Date().getHours()) => {
   if (hour < 18) return 'Selamat sore';
   return 'Selamat malam';
 };
+
+// Komponen Khusus Ikon Api & Centang
+const ActiveFlameIcon = ({ size = 38, theme: t }) => (
+  <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <Ionicons name="flame" size={size} color="#F97316" />
+    <View
+      style={{
+        position: 'absolute',
+        bottom: 2,
+        right: -2,
+        backgroundColor: t.card, // Menyamarkan background centang dengan warna card
+        borderRadius: 12,
+        padding: 1,
+      }}
+    >
+      <Ionicons name="checkmark-circle" size={size * 0.45} color={t.primary} />
+    </View>
+  </View>
+);
 
 export default function HomeScreen({ theme: t, user, setActiveScreen }) {
   const s = useMemo(() => createStyles(t), [t]);
@@ -59,27 +79,36 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
     return days;
   }, [activities]);
 
-  // Kalender Bulanan (30 Hari Terakhir)
-  const monthlyStreak = useMemo(() => {
+  // Kalender Grid Klasik (Bulan Berjalan)
+  const monthlyCalendar = useMemo(() => {
     const today = new Date();
-    const days = [];
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     const runDatesSet = new Set(
       activities.map((a) => new Date(a.date).toDateString())
     );
 
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(today.getDate() - i);
-      days.push({
-        dateNum: d.getDate(),
+    const grid = [];
+    // Isi grid kosong untuk hari sebelum tanggal 1
+    for (let i = 0; i < firstDay; i++) {
+      grid.push(null);
+    }
+    // Isi tanggal bulan ini
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(year, month, i);
+      grid.push({
+        dateNum: i,
+        isToday: d.toDateString() === today.toDateString(),
         active: runDatesSet.has(d.toDateString()),
-        fullDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
       });
     }
-    return days;
+    return grid;
   }, [activities]);
 
-  const activeDaysCount = monthlyStreak.filter((d) => d.active).length;
+  const activeDaysCount = monthlyCalendar.filter((d) => d && d.active).length;
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={s.safe}>
@@ -104,31 +133,34 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
 
           <View style={s.weekRow}>
             {weeklyStreak.map((d, index) => (
-              <View key={index} style={s.dayItem}>
-                <Text style={[s.dayName, d.isToday && { color: t.primary, fontWeight: '800' }]}>
-                  {d.name}
-                </Text>
-                <View
-                  style={[
-                    s.dayCircle,
-                    {
-                      backgroundColor: d.active ? t.primary : t.input,
-                      borderColor: d.isToday ? t.text : 'transparent',
-                    },
-                  ]}
-                >
-                  {d.active ? (
-                    <Ionicons name="checkmark" size={14} color={t.onPrimary} />
-                  ) : (
-                    <Text style={[s.dayNumber, { color: t.sub }]}>{d.dateNum}</Text>
-                  )}
-                </View>
+              <View key={index} style={s.dayItemWrap}>
+                {d.active ? (
+                  // HARI AKTIF: Tertutup Ikon Api & Centang sepenuhnya
+                  <ActiveFlameIcon size={38} theme={t} />
+                ) : (
+                  // HARI BIASA: Tampilkan teks hari dan angka
+                  <View style={s.dayItem}>
+                    <Text style={[s.dayName, d.isToday && { color: t.primary, fontWeight: '800' }]}>
+                      {d.name}
+                    </Text>
+                    <View
+                      style={[
+                        s.dayCircle,
+                        { borderColor: d.isToday ? t.primary : 'transparent' },
+                      ]}
+                    >
+                      <Text style={[s.dayNumber, d.isToday ? { color: t.primary } : { color: t.sub }]}>
+                        {d.dateNum}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
             ))}
           </View>
         </Card>
 
-        {/* RINGKASAN HASIL LARI TERAKHIR (BUKAN BMI) */}
+        {/* RINGKASAN HASIL LARI TERAKHIR */}
         <Text style={s.sectionHeader}>Hasil Lari Terakhir</Text>
         {latestRun ? (
           <Card theme={t} style={s.runCard}>
@@ -179,7 +211,7 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
         )}
       </ScrollView>
 
-      {/* MODAL KALENDER STREAK PER BULAN */}
+      {/* MODAL KALENDER STREAK */}
       <Modal
         visible={calendarModalVisible}
         transparent
@@ -189,38 +221,63 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
         <View style={s.modalOverlay}>
           <View style={[s.modalCard, { backgroundColor: t.card, borderColor: t.border }]}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Streak Latihan 30 Hari</Text>
+              <Text style={s.modalTitle}>Kalender Aktivitas</Text>
               <TouchableOpacity onPress={() => setCalendarModalVisible(false)}>
-                <Ionicons name="close-circle" size={24} color={t.sub} />
+                <Ionicons name="close-circle" size={26} color={t.sub} />
               </TouchableOpacity>
             </View>
 
             <Text style={s.modalDesc}>
-              Total <Text style={{ color: t.primary, fontWeight: '800' }}>{activeDaysCount} hari</Text> aktif berolahraga dalam 30 hari terakhir.
+              Total <Text style={{ color: t.primary, fontWeight: '800' }}>{activeDaysCount} hari</Text> aktif di bulan ini.
             </Text>
 
-            <View style={s.calendarGrid}>
-              {monthlyStreak.map((item, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    s.gridBox,
-                    { backgroundColor: item.active ? t.primary : t.input },
-                  ]}
-                >
-                  <Text style={[s.gridText, { color: item.active ? t.onPrimary : t.sub }]}>
-                    {item.dateNum}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {/* CONTAINER KALENDER 7 KOLOM */}
+            <View style={s.calendarContainer}>
+              {/* Header Hari */}
+              <View style={s.calendarHeaderRow}>
+                {DAYS_NAME_SHORT.map((day, idx) => (
+                  <Text key={idx} style={[s.calDayHead, { color: t.sub }]}>{day}</Text>
+                ))}
+              </View>
 
-            <TouchableOpacity
-              onPress={() => setCalendarModalVisible(false)}
-              style={[s.modalCloseBtn, { backgroundColor: t.primary }]}
-            >
-              <Text style={{ color: t.onPrimary, fontWeight: '700' }}>Tutup</Text>
-            </TouchableOpacity>
+              {/* Grid Tanggal */}
+              <View style={s.calendarGrid}>
+                {monthlyCalendar.map((item, idx) => {
+                  // Jika sel padding (kosong sebelum tgl 1)
+                  if (!item) {
+                    return <View key={idx} style={s.calCell} />;
+                  }
+
+                  // Jika hari itu user melakukan aktivitas
+                  if (item.active) {
+                    return (
+                      <View key={idx} style={s.calCell}>
+                        <ActiveFlameIcon size={26} theme={t} />
+                      </View>
+                    );
+                  }
+
+                  // Hari biasa / Hari ini
+                  return (
+                    <View
+                      key={idx}
+                      style={[
+                        s.calCell,
+                        item.isToday && s.calCellToday,
+                        item.isToday && { backgroundColor: t.primary }
+                      ]}
+                    >
+                      <Text style={[
+                        s.calCellText,
+                        { color: item.isToday ? t.onPrimary : t.text }
+                      ]}>
+                        {item.dateNum}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -244,17 +301,18 @@ const createStyles = (t) =>
     seeMonthText: { fontSize: 12, fontWeight: '700', color: t.primary },
 
     weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    dayItem: { alignItems: 'center', gap: 6 },
+    dayItemWrap: { width: 40, height: 50, alignItems: 'center', justifyContent: 'center' },
+    dayItem: { alignItems: 'center', gap: 4 },
     dayName: { fontSize: 11, color: t.sub, fontWeight: '600' },
     dayCircle: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1.5,
     },
-    dayNumber: { fontSize: 11, fontWeight: '700' },
+    dayNumber: { fontSize: 12, fontWeight: '700' },
 
     sectionHeader: { fontSize: 16, fontWeight: '800', color: t.text, marginBottom: 10 },
     runCard: { padding: 16 },
@@ -294,23 +352,33 @@ const createStyles = (t) =>
 
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      justifyContent: 'flex-end',
+      padding: 0,
     },
-    modalCard: { width: '100%', borderRadius: 20, padding: 18, borderWidth: 1 },
+    modalCard: { 
+      width: '100%', 
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28, 
+      padding: 24, 
+      borderTopWidth: 1 
+    },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    modalTitle: { fontSize: 16, fontWeight: '800', color: t.text },
-    modalDesc: { fontSize: 12, color: t.sub, marginVertical: 12 },
-    calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-    gridBox: {
-      width: 38,
-      height: 38,
-      borderRadius: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
+    modalTitle: { fontSize: 18, fontWeight: '800', color: t.text },
+    modalDesc: { fontSize: 13, color: t.sub, marginVertical: 12 },
+
+    // CSS KALENDER
+    calendarContainer: { width: '100%', marginTop: 10, marginBottom: 10 },
+    calendarHeaderRow: { flexDirection: 'row', marginBottom: 12 },
+    calDayHead: { width: '14.28%', textAlign: 'center', fontSize: 11, fontWeight: '700' },
+    calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    calCell: { 
+      width: '14.28%', 
+      height: 44, 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      marginBottom: 6 
     },
-    gridText: { fontSize: 11, fontWeight: '700' },
-    modalCloseBtn: { marginTop: 16, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+    calCellToday: { borderRadius: 12 },
+    calCellText: { fontSize: 15, fontWeight: '600' },
   });

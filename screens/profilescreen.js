@@ -85,8 +85,8 @@ export default function ProfileScreen({
               </Text>
             </View>
             <View style={s.heroInfo}>
-              <Text style={[s.userName, { color: t.text }]}>{user?.name || 'Vitra User'}</Text>
-              <Text style={[s.userEmail, { color: t.sub }]}>{user?.email || 'user@vitra.app'}</Text>
+              <Text style={[s.userName, { color: t.text }]}>{user?.name || 'vstride User'}</Text>
+              <Text style={[s.userEmail, { color: t.sub }]}>{user?.email || 'user@vstride.app'}</Text>
               <TouchableOpacity
                 onPress={() => {
                   setNewName(user?.name || '');
@@ -188,7 +188,7 @@ export default function ProfileScreen({
 
             <TouchableOpacity
               onPress={() =>
-                Alert.alert('Keluar Akun', 'Keluar dari aplikasi Vitra?', [
+                Alert.alert('Keluar Akun', 'Keluar dari aplikasi vstride?', [
                   { text: 'Batal' },
                   { text: 'Keluar', style: 'destructive', onPress: onLogout },
                 ])

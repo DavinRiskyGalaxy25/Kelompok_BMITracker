@@ -23,72 +23,133 @@ const ACTIVITIES = [
   { key: 'swim', label: 'Berenang', icon: 'water' },
 ];
 
+// Menghitung jarak akurat (Haversine formula dalam meter)
+function getHaversineDistance(a, b) {
+  const toRad = (x) => (x * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const val =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(val));
+}
+
+// Menghitung derajat arah gerakan (heading 0-360 derajat)
+function getBearing(a, b) {
+  const toRad = (x) => (x * Math.PI) / 180;
+  const toDeg = (x) => (x * 180) / Math.PI;
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
 function createMapHTML(primaryColor = '#2563EB', is3D = false) {
+  // Tile OpenStreetMap & CartoDB tanpa parameter retina rusak ({r})
   const tileUrl = is3D
-    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob: https:;" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; background: #E5E3DF; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #E2E8F0;
+    }
     .leaflet-control-attribution { display: none !important; }
-    .location-marker {
+    .location-marker-outer {
       width: 22px; height: 22px;
       background: ${primaryColor};
-      border: 3px solid #ffffff;
+      border: 3px solid #FFFFFF;
       border-radius: 50%;
-      box-shadow: 0 0 0 6px ${primaryColor}35, 0 3px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 0 0 5px ${primaryColor}40, 0 3px 6px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <script>
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-7.2575, 112.7521], 16);
-    L.tileLayer('${tileUrl}', { maxZoom: 19 }).addTo(map);
+    var map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false,
+      fadeAnimation: true
+    }).setView([-7.2575, 112.7521], 16);
 
-    let marker = null;
-    const routeLayer = L.layerGroup().addTo(map);
+    L.tileLayer('${tileUrl}', {
+      maxZoom: 19,
+      subdomains: 'abc'
+    }).addTo(map);
 
-    const icon = L.divIcon({
+    var marker = null;
+    var routeLayer = L.layerGroup().addTo(map);
+
+    var customIcon = L.divIcon({
       className: '',
-      html: '<div class="location-marker"></div>',
-      iconSize: [22, 22], iconAnchor: [11, 11]
+      html: '<div class="location-marker-outer"></div>',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11]
     });
 
-    function setPos(lat, lng) {
+    // POINTER: Bergerak real-time pada setiap gerakan sekecil apapun
+    function updatePointer(lat, lng) {
       if (!marker) {
-        marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+        marker = L.marker([lat, lng], { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
+        map.setView([lat, lng], 17);
       } else {
         marker.setLatLng([lat, lng]);
+        map.panTo([lat, lng], { animate: true, duration: 0.4 });
       }
-      map.setView([lat, lng], 16);
     }
 
-    function setRoute(pts) {
+    // RUTE: Digambar mengikuti titik-titik yang sudah disaring
+    function updateRoute(pts) {
       routeLayer.clearLayers();
       if (!Array.isArray(pts) || pts.length < 2) return;
-      L.polyline(pts, { color: '${primaryColor}', weight: 6, lineCap: 'round', lineJoin: 'round' }).addTo(routeLayer);
+      L.polyline(pts, {
+        color: '${primaryColor}',
+        weight: 5,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(routeLayer);
     }
 
-    function resetMap() {
+    function clearRoute() {
       routeLayer.clearLayers();
     }
 
-    window.addEventListener('message', (e) => {
+    window.addEventListener('message', function(e) {
       try {
-        const d = JSON.parse(e.data);
-        if (d.type === 'POS') setPos(d.lat, d.lng);
-        if (d.type === 'ROUTE') setRoute(d.pts);
-        if (d.type === 'RESET') resetMap();
+        var data = JSON.parse(e.data);
+        if (data.type === 'POS') updatePointer(data.lat, data.lng);
+        if (data.type === 'ROUTE') updateRoute(data.pts);
+        if (data.type === 'RESET') clearRoute();
       } catch(err) {}
     });
+
+    setTimeout(function() {
+      map.invalidateSize();
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_READY' }));
+      }
+    }, 400);
   </script>
 </body>
 </html>
@@ -105,7 +166,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [is3DMap, setIs3DMap] = useState(false);
 
-  // FSM State: 'idle' | 'recording' | 'paused'
+  // Status: 'idle' | 'recording' | 'paused'
   const [recordState, setRecordState] = useState('idle');
   const [elapsed, setElapsed] = useState(0);
   const [distanceM, setDistanceM] = useState(0);
@@ -113,6 +174,11 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
 
   const timerRef = useRef(null);
   const watchSubRef = useRef(null);
+
+  // Buffer ref untuk penyaringan garis lurus (Straight-line filter)
+  const lastPointRef = useRef(null);
+  const lastAnchorRef = useRef(null);
+  const lastBearingRef = useRef(null);
 
   const km = distanceM / 1000;
   const currentPace = formatPace(elapsed, km);
@@ -123,7 +189,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     webViewRef.current.injectJavaScript(`window.dispatchEvent(new MessageEvent('message', { data: ${msg} })); true;`);
   }, []);
 
-  // Inisialisasi GPS
+  // Ambil lokasi GPS saat pertama kali layar dibuka
   useEffect(() => {
     (async () => {
       try {
@@ -136,7 +202,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     })();
   }, [sendToMap]);
 
-  // Timer Lifecycle
+  // Siklus Timer
   useEffect(() => {
     if (recordState === 'recording') {
       timerRef.current = setInterval(() => {
@@ -150,24 +216,81 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     };
   }, [recordState]);
 
+  // LOGIKA GPS: Pointer real-time vs Rute Lurus Halus
   const startGPS = async () => {
     try {
       watchSubRef.current = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 },
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 800,     // Update cepat setiap 800ms
+          distanceInterval: 1,   // Cukup melangkah 1 meter, pointer langsung respon
+        },
         (loc) => {
-          const { latitude, longitude } = loc.coords;
-          sendToMap({ type: 'POS', lat: latitude, lng: longitude });
+          const current = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          };
 
-          setRoute((prev) => {
-            const next = [...prev, [latitude, longitude]];
-            sendToMap({ type: 'ROUTE', pts: next });
-            return next;
+          // 1. POINTER SELALU MENGIKUTI GERAKAN SEKECIL APAPUN
+          sendToMap({ type: 'POS', lat: current.latitude, lng: current.longitude });
+
+          // 2. PENYARINGAN GARIS LINTASAN (TETAP LURUS SAAT JALAN LURUS)
+          if (!lastAnchorRef.current) {
+            lastAnchorRef.current = current;
+            lastPointRef.current = current;
+            const initialRoute = [[current.latitude, current.longitude]];
+            setRoute(initialRoute);
+            sendToMap({ type: 'ROUTE', pts: initialRoute });
+            return;
+          }
+
+          const distFromLast = getHaversineDistance(lastPointRef.current, current);
+          if (distFromLast < 1.2) return; // Abaikan osilasi noise statis mikro (<1.2 meter)
+
+          // Tambahkan akumulasi jarak tempuh riil
+          setDistanceM((prev) => prev + distFromLast);
+          lastPointRef.current = current;
+
+          const distFromAnchor = getHaversineDistance(lastAnchorRef.current, current);
+          const currentBearing = getBearing(lastAnchorRef.current, current);
+
+          // Cek deviasi sudut arah
+          let angleDiff = 0;
+          if (lastBearingRef.current !== null) {
+            angleDiff = Math.abs(currentBearing - lastBearingRef.current);
+            if (angleDiff > 180) angleDiff = 360 - angleDiff;
+          }
+
+          /**
+           * ATURAN:
+           * - Selama jalan lurus (angleDiff < 15 derajat) dan jarak belum lewat 25m,
+           *   ujung garis hanya digeser maju (tidak membuat zigzag bengkok).
+           * - Begitu berbelok signifikan (> 15 derajat) atau melangkah > 25m,
+           *   baru kita buat simpul belokan baru.
+           */
+          setRoute((prevRoute) => {
+            let nextRoute = [...prevRoute];
+            if (angleDiff > 15 || distFromAnchor >= 25 || lastBearingRef.current === null) {
+              // Terjadi belokan signifikan: Kunci simpul belokan baru
+              nextRoute.push([current.latitude, current.longitude]);
+              lastAnchorRef.current = current;
+              lastBearingRef.current = currentBearing;
+            } else {
+              // Masih lurus: Perbarui titik terdepan agar garis lurus mulus
+              if (nextRoute.length > 1) {
+                nextRoute[nextRoute.length - 1] = [current.latitude, current.longitude];
+              } else {
+                nextRoute.push([current.latitude, current.longitude]);
+              }
+            }
+            sendToMap({ type: 'ROUTE', pts: nextRoute });
+            return nextRoute;
           });
-
-          setDistanceM((prev) => prev + 2.8);
         }
       );
-    } catch (e) {}
+    } catch (e) {
+      console.log('Error GPS:', e);
+    }
   };
 
   const stopGPS = () => {
@@ -175,6 +298,9 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
       watchSubRef.current.remove();
       watchSubRef.current = null;
     }
+    lastPointRef.current = null;
+    lastAnchorRef.current = null;
+    lastBearingRef.current = null;
   };
 
   const handleStart = async () => {
@@ -212,7 +338,6 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
       date: new Date().toISOString(),
     });
 
-    // Reset State & Map
     setElapsed(0);
     setDistanceM(0);
     setRoute([]);
@@ -221,22 +346,17 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     if (setActiveScreen) setActiveScreen('profile');
   };
 
-  // HANDLER EKSEKUSI BUANG SESI (DISCARD)
   const executeDiscard = () => {
     setPauseModalVisible(false);
     setConfirmDiscard(false);
     setRecordState('idle');
 
-    // 1. Matikan tracking GPS & interval
     stopGPS();
     if (timerRef.current) clearInterval(timerRef.current);
 
-    // 2. Bersihkan buffer state lokal
     setElapsed(0);
     setDistanceM(0);
     setRoute([]);
-
-    // 3. Reset visual rute di Leaflet WebView
     sendToMap({ type: 'RESET' });
   };
 
@@ -244,18 +364,26 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     <View style={s.root}>
       <StatusBar barStyle={t.isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-      {/* 1. FULL-BLEED MAP VIEWPORT */}
+      {/* 1. FULLSCREEN MAP VIEWPORT */}
       <View style={StyleSheet.absoluteFillObject}>
         <WebView
           ref={webViewRef}
-          source={{ html: createMapHTML(t.primary, is3DMap) }}
+          source={{
+            html: createMapHTML(t.primary, is3DMap),
+            baseUrl: 'https://unpkg.com', // 👈 PENTING: Mencegah error blokir CDN di Android
+          }}
           style={s.webview}
+          originWhitelist={['*']}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          mixedContentMode="always"
+          androidHardwareAccelerationDisabled={false}
+          scalesPageToFit={true}
         />
       </View>
 
-      {/* 2. ANCHORED BOTTOM CONTROL PANEL */}
+      {/* 2. ANCHORED HUD & CONTROLS */}
       <SafeAreaView edges={['bottom']} style={s.anchoredPanel}>
-        {/* FLOATING HUD METRICS */}
         <Card theme={t} style={s.floatingHUD}>
           <View style={s.hudCol}>
             <Text style={[s.hudValue, { color: t.text }]}>{formatDuration(elapsed)}</Text>
@@ -273,19 +401,16 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           </View>
         </Card>
 
-        {/* 3 CIRCULAR ACTION BUTTONS */}
         <View style={s.actionRow}>
-          {/* Tombol Kiri: Pemilih Kategori */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => recordState === 'idle' && setActivityModalVisible(true)}
-            style={[s.circleBtn, { backgroundColor: t.card, borderColor: t.border }]}
+            style={[s.circleBtn, { backgroundColor: t.card }]}
             accessibilityLabel="Pilih Jenis Olahraga"
           >
             <Ionicons name={selectedActivity.icon} size={22} color={t.text} />
           </TouchableOpacity>
 
-          {/* Tombol Tengah: Play / Pause Control */}
           {recordState === 'idle' ? (
             <TouchableOpacity
               activeOpacity={0.85}
@@ -306,13 +431,12 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
             </TouchableOpacity>
           )}
 
-          {/* Tombol Kanan: Tipe Peta 3D/Standar */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setIs3DMap(!is3DMap)}
             style={[
               s.circleBtn,
-              { backgroundColor: t.card, borderColor: is3DMap ? t.primary : t.border },
+              { backgroundColor: t.card, borderColor: is3DMap ? t.primary : 'transparent', borderWidth: is3DMap ? 2 : 0 },
             ]}
             accessibilityLabel="Ubah Tampilan Peta"
           >
@@ -321,12 +445,11 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
         </View>
       </SafeAreaView>
 
-      {/* MODAL DIALOG: JEDA & BUANG SESI (BEBAS DEADLOCK) */}
+      {/* MODAL JEDA & KONFIRMASI BUANG */}
       <Modal visible={pauseModalVisible} transparent animationType="fade">
         <View style={s.scrimOverlay}>
-          <View style={[s.pauseSheet, { backgroundColor: t.card, borderColor: t.border }]}>
+          <View style={[s.pauseSheet, { backgroundColor: t.card }]}>
             {!confirmDiscard ? (
-              // TAMPILAN NORMAL SAAT DIJEDA
               <>
                 <View style={s.pauseHeader}>
                   <View style={[s.pauseBadge, { backgroundColor: `${t.primary}18` }]}>
@@ -351,13 +474,12 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={handleSave}
-                    style={[s.modalBtn, { backgroundColor: t.card, borderColor: t.border, borderWidth: 1 }]}
+                    style={[s.modalBtn, { backgroundColor: t.input }]}
                   >
                     <Ionicons name="checkmark-circle" size={18} color={t.primary} />
                     <Text style={[s.modalBtnText, { color: t.text }]}>Selesai & Simpan</Text>
                   </TouchableOpacity>
 
-                  {/* Tombol Buang Sesi: Membuka Konfirmasi Langsung di Modal */}
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={() => setConfirmDiscard(true)}
@@ -369,7 +491,6 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
                 </View>
               </>
             ) : (
-              // TAMPILAN KONFIRMASI BUANG SESI (IN-SHEET CONFIRMATION)
               <>
                 <View style={s.pauseHeader}>
                   <View style={[s.pauseBadge, { backgroundColor: `${t.danger}18` }]}>
@@ -377,7 +498,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
                   </View>
                   <Text style={[s.pauseTitle, { color: t.text }]}>Buang Sesi Ini?</Text>
                   <Text style={[s.pauseSubtitle, { color: t.sub, textAlign: 'center' }]}>
-                    Data rute dan waktu latihan yang belum disimpan akan terhapus permanen.
+                    Data rute dan waktu latihan ini akan dihapus permanen.
                   </Text>
                 </View>
 
@@ -412,7 +533,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           activeOpacity={1}
           onPress={() => setActivityModalVisible(false)}
         >
-          <View style={[s.activitySheet, { backgroundColor: t.card, borderColor: t.border }]}>
+          <View style={[s.activitySheet, { backgroundColor: t.card }]}>
             <Text style={[s.sheetTitle, { color: t.text }]}>Pilih Kategori Gerakan</Text>
             {ACTIVITIES.map((act) => (
               <TouchableOpacity
@@ -468,7 +589,6 @@ const createStyles = (t) =>
       paddingHorizontal: 8,
       borderRadius: 18,
       marginBottom: 14,
-      borderWidth: 1,
       elevation: 6,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 3 },
@@ -490,7 +610,6 @@ const createStyles = (t) =>
       width: 52,
       height: 52,
       borderRadius: 26,
-      borderWidth: 1,
       alignItems: 'center',
       justifyContent: 'center',
       elevation: 4,
@@ -523,7 +642,6 @@ const createStyles = (t) =>
       width: '100%',
       borderRadius: 22,
       padding: 20,
-      borderWidth: 1,
       alignItems: 'center',
     },
     pauseHeader: { alignItems: 'center', marginBottom: 20 },
@@ -552,7 +670,6 @@ const createStyles = (t) =>
       width: '100%',
       borderRadius: 20,
       padding: 18,
-      borderWidth: 1,
     },
     sheetTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
     activityOptionRow: {

@@ -1,5 +1,5 @@
 /**
- * Vitra — pengolahan jejak GPS (murni logika, tanpa React/Expo, mudah diuji).
+ * vstride — pengolahan jejak GPS (murni logika, tanpa React/Expo, mudah diuji).
  *
  * MASALAH: GPS ponsel selalu "bergoyang" ±3–15 m walau pengguna diam. Filter lama hanya
  * membuang akurasi > 30 m dan langkah < 2 m, jadi goyangan itu ikut digambar sebagai
