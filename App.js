@@ -18,13 +18,10 @@ import ProfileScreen from './screens/profilescreen';
 
 import BottomNavBar from './components/BottomNavBar';
 import { TrackerProvider } from './hooks/usetracker';
-import {
-  getSession,
-  getThemePreference,
-  removeSession,
-  saveSession,
-  saveThemePreference,
-} from './utils/storage';
+
+// Kita hanya mengambil theme preference, sesi ditangani Supabase
+import { getThemePreference, saveThemePreference } from './utils/storage';
+import { supabase } from './utils/supabase'; // <-- KONEKSI SUPABASE
 
 /* ------------------------------ Constants ------------------------------ */
 
@@ -38,7 +35,7 @@ const THEMES = {
     onPrimary: '#FFFFFF', shadow: '#0F172A',
   },
   dark: {
-    bg: '#09090B', card: '#18181B', primary: '#F97316', text: '#FAFAFA',
+    bg: '#09090B', card: '#18181B', primary: '#FF2D95', text: '#FAFAFA', // MAGENTA
     sub: '#A1A1AA', border: '#27272A', input: '#27272A', danger: '#EF4444',
     onPrimary: '#FFFFFF', shadow: '#000000',
   },
@@ -51,7 +48,6 @@ const BMI_COLORS = {
   obese: '#EF4444',
 };
 
-// Daftar 5 menu utama aplikasi
 const SCREENS = {
   home: HomeScreen,
   stopwatch: StopwatchScreen,
@@ -60,27 +56,20 @@ const SCREENS = {
   profile: ProfileScreen,
 };
 
-// Di App.js
 const buildTheme = (isDark) => {
   const base = isDark ? THEMES.dark : THEMES.light;
-
   return {
     ...base,
     isDark,
     bmi: BMI_COLORS,
-
-    // 1. Font Judul Brand (Mirip Strava, tegas & sporty, bawaan sistem tanpa perlu install)
     fontBrand: Platform.select({
       ios: 'HelveticaNeue-CondensedBlack',
       android: 'sans-serif-condensed',
     }),
-
-    // 2. Font Monospace untuk seluruh teks aplikasi (Bawaan sistem)
     fontMono: Platform.select({
       ios: 'Courier',
       android: 'monospace',
     }),
-
     fontRegular: Platform.select({
       ios: 'Courier',
       android: 'monospace',
@@ -96,7 +85,7 @@ export default function App() {
 
   const [booting, setBooting] = useState(true);
   const [user, setUser] = useState(null);
-  const [authView, setAuthView] = useState('login'); // 'login' | 'register'
+  const [authView, setAuthView] = useState('login'); 
   const [activeScreen, setActiveScreen] = useState('home');
   const [themeMode, setThemeMode] = useState(null);
 
@@ -106,7 +95,7 @@ export default function App() {
   const fontsSettled = fontsLoaded || Boolean(fontError);
   const ready = !booting && fontsSettled;
 
-  /* ------------------------------ Bootstrap ------------------------------ */
+  /* ------------------------------ Bootstrap & Auth Listener ------------------------------ */
 
   useEffect(() => {
     let active = true;
@@ -114,10 +103,23 @@ export default function App() {
 
     (async () => {
       try {
-        const [session, savedTheme] = await Promise.all([getSession(), getThemePreference()]);
+        // Tarik sesi Supabase dan preferensi tema bersamaan
+        const [themeRes, sessionRes] = await Promise.all([
+          getThemePreference(),
+          supabase.auth.getSession()
+        ]);
+
         if (!active) return;
-        if (session) setUser(session);
-        if (savedTheme) setThemeMode(savedTheme);
+        
+        const session = sessionRes.data.session;
+        if (session) {
+          setUser({
+            name: session.user.user_metadata?.name || DEFAULT_USER_NAME,
+            email: session.user.email,
+            id: session.user.id
+          });
+        }
+        if (themeRes) setThemeMode(themeRes);
       } catch (error) {
         console.log('Initialize app error:', error);
       }
@@ -126,8 +128,24 @@ export default function App() {
       if (active) setBooting(false);
     })();
 
+    // LISTENER SUPABASE: Deteksi otomatis saat User mendaftar, login, atau logout
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setUser({
+          name: session.user.user_metadata?.name || DEFAULT_USER_NAME,
+          email: session.user.email,
+          id: session.user.id
+        });
+        setAuthView('login');
+        setActiveScreen('home');
+      } else {
+        setUser(null);
+      }
+    });
+
     return () => {
       active = false;
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
@@ -149,38 +167,27 @@ export default function App() {
       }
       return false;
     });
-
     return () => subscription.remove();
   }, [user, activeScreen, authView]);
 
   /* -------------------------------- Session ------------------------------- */
 
-  const startSession = useCallback(async (profile) => {
-    const session = {
-      name: String(profile?.name ?? '').trim() || DEFAULT_USER_NAME,
-      email: String(profile?.email ?? '').trim().toLowerCase(),
-    };
-
-    await saveSession(session);
-    setUser(session);
-    setAuthView('login');
-    setActiveScreen('home');
+  // Memperbarui nama akun langsung ke database Supabase
+  const handleUpdateUser = useCallback(async (patch) => {
+    if (patch.name) {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { name: patch.name }
+      });
+      if (!error) {
+        setUser(prev => ({ ...prev, ...patch }));
+      }
+    }
   }, []);
 
-  const handleUpdateUser = useCallback(
-    async (patch) => {
-      const nextUser = { ...(user || {}), ...(patch || {}) };
-      await saveSession(nextUser);
-      setUser(nextUser);
-    },
-    [user]
-  );
-
+  // Logout dari Supabase
   const handleLogout = useCallback(async () => {
-    await removeSession();
-    setUser(null);
-    setAuthView('login');
-    setActiveScreen('home');
+    await supabase.auth.signOut();
+    // setUser(null) otomatis dipanggil oleh onAuthStateChange di atas
   }, []);
 
   /* --------------------------------- Theme -------------------------------- */
@@ -201,22 +208,11 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <View style={[styles.root, { backgroundColor: theme.bg }]}>
-          <StatusBar
-            barStyle={darkMode ? 'light-content' : 'dark-content'}
-            backgroundColor={theme.bg}
-          />
+          <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
           {authView === 'register' ? (
-            <RegisterScreen
-              theme={theme}
-              onRegister={startSession}
-              onBackToLogin={() => setAuthView('login')}
-            />
+            <RegisterScreen theme={theme} onBackToLogin={() => setAuthView('login')} />
           ) : (
-            <LoginScreen
-              theme={theme}
-              onLogin={startSession}
-              onRegister={() => setAuthView('register')}
-            />
+            <LoginScreen theme={theme} onRegister={() => setAuthView('register')} />
           )}
         </View>
       </SafeAreaProvider>
@@ -228,12 +224,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={[styles.root, { backgroundColor: theme.bg }]}>
-        <StatusBar
-          barStyle={darkMode ? 'light-content' : 'dark-content'}
-          backgroundColor={theme.bg}
-        />
+        <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
         <TrackerProvider>
-          {/* Viewport Konten Layar Aktif */}
           <View style={styles.screenContainer}>
             <ActiveScreen
               key={activeScreen}
@@ -246,13 +238,7 @@ export default function App() {
               setActiveScreen={navigate}
             />
           </View>
-
-          {/* PERSISTENT BOTTOM NAVBAR (Terkunci di bawah, tidak berkedip) */}
-          <BottomNavBar
-            activeScreen={activeScreen}
-            setActiveScreen={navigate}
-            theme={theme}
-          />
+          <BottomNavBar activeScreen={activeScreen} setActiveScreen={navigate} theme={theme} />
         </TrackerProvider>
       </View>
     </SafeAreaProvider>

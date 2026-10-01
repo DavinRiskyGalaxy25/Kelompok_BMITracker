@@ -1,15 +1,4 @@
-/**
- * LoginScreen — vstride
- *
- * Props:
- *  - theme       token tema vstride dari App.js
- *  - onLogin     async ({ name, email }) => void   (password TIDAK diteruskan)
- *  - onRegister  () => void                         (pindah ke form pendaftaran)
- *
- * STATUS: autentikasi masih stub (prototype lokal). Semua kombinasi email/password yang
- * lolos validasi format akan membuat sesi. Ganti isi `handleLogin` dengan panggilan
- * ke authService/backend sebelum rilis; simpan token di expo-secure-store.
- */
+// screens/loginscreen.js
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
@@ -24,22 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Btn, Card, Field, SectionTitle } from '../components/ui';
-import {
-  EMAIL_MAX_LENGTH,
-  PASSWORD_MAX_LENGTH,
-  nameFromEmail,
-  normalizeEmail,
-  validateLogin,
-} from '../utils/validation';
+import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, normalizeEmail, validateLogin } from '../utils/validation';
+import { supabase } from '../utils/supabase'; // <-- KONEKSI SUPABASE
 
 const APP_NAME = 'VSTRIDE';
-const DEFAULT_USER_NAME = 'VSTRIDE User';
 
-// Hanya untuk development. Blok yang memakainya dibungkus __DEV__ sehingga
-// dihapus dari build produksi dan kredensial ini tidak ikut terkirim.
-const DEMO_ACCOUNT = { email: 'demo@vstride.app', password: 'demo12345' };
-
-export default function LoginScreen({ theme: t, onLogin, onRegister }) {
+export default function LoginScreen({ theme: t, onRegister }) {
   const s = useMemo(() => createStyles(t), [t]);
 
   const [email, setEmail] = useState('');
@@ -73,27 +52,28 @@ export default function LoginScreen({ theme: t, onLogin, onRegister }) {
     setLoading(true);
 
     try {
-      // Password sengaja tidak dikirim ke sesi. Verifikasi kredensial = tugas backend.
-      await onLogin({
-        name: nameFromEmail(cleanEmail) || DEFAULT_USER_NAME,
+      // PROSES LOGIN KE SUPABASE
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
+        password: password,
       });
+
+      if (signInError) throw signInError;
+      // Jika berhasil, Supabase akan memicu event otomatis ke App.js
     } catch (e) {
       console.log('Login error:', e);
-      if (mountedRef.current) setError('Gagal masuk. Coba lagi.');
+      let errorMsg = e.message;
+      if (errorMsg.includes('Invalid login credentials')) {
+        errorMsg = 'Email atau kata sandi yang Anda masukkan salah.';
+      }
+      if (mountedRef.current) setError(errorMsg || 'Gagal masuk. Coba lagi.');
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [email, password, loading, onLogin]);
+  }, [email, password, loading]);
 
   const handleForgotPassword = () => {
-    setError('Reset kata sandi akan tersedia setelah sistem akun terhubung.');
-  };
-
-  const fillDemoAccount = () => {
-    setEmail(DEMO_ACCOUNT.email);
-    setPassword(DEMO_ACCOUNT.password);
-    setError('');
+    setError('Fitur reset kata sandi sedang dalam pengembangan.');
   };
 
   return (
@@ -103,91 +83,31 @@ export default function LoginScreen({ theme: t, onLogin, onRegister }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView
-          contentContainerStyle={s.content}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
           <View style={s.header}>
             <Text style={s.appName}>{APP_NAME}</Text>
             <Text style={s.tagline}>Masuk untuk melanjutkan aktivitas Anda.</Text>
           </View>
-
           <SectionTitle theme={t} icon="log-in" title="Masuk" />
 
           <Card theme={t}>
-            <Field
-              theme={t}
-              label="Email"
-              icon="mail-outline"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Masukkan email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              maxLength={EMAIL_MAX_LENGTH}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              editable={!loading}
-            />
+            <Field theme={t} label="Email" icon="mail-outline" value={email} onChangeText={setEmail} placeholder="Masukkan email" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="emailAddress" maxLength={EMAIL_MAX_LENGTH} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => passwordRef.current?.focus()} editable={!loading} />
+            <Field ref={passwordRef} theme={t} label="Kata sandi" icon="lock-closed-outline" value={password} onChangeText={setPassword} placeholder="Masukkan kata sandi" secure autoCapitalize="none" autoCorrect={false} autoComplete="password" textContentType="password" maxLength={PASSWORD_MAX_LENGTH} returnKeyType="go" onSubmitEditing={handleLogin} editable={!loading} />
 
-            <Field
-              ref={passwordRef}
-              theme={t}
-              label="Kata sandi"
-              icon="lock-closed-outline"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Masukkan kata sandi"
-              secure
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-              textContentType="password"
-              maxLength={PASSWORD_MAX_LENGTH}
-              returnKeyType="go"
-              onSubmitEditing={handleLogin}
-              editable={!loading}
-            />
-
-            <TouchableOpacity
-              onPress={handleForgotPassword}
-              activeOpacity={0.7}
-              style={s.forgot}
-              accessibilityRole="button"
-            >
+            <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7} style={s.forgot}>
               <Text style={s.link}>Lupa kata sandi?</Text>
             </TouchableOpacity>
 
-            {error ? (
-              <Text style={s.errorText} accessibilityLiveRegion="polite">
-                {error}
-              </Text>
-            ) : null}
+            {error ? <Text style={s.errorText}>{error}</Text> : null}
 
             <View style={s.actions}>
               <Btn theme={t} label="Masuk" icon="log-in" onPress={handleLogin} loading={loading} />
-              {__DEV__ ? (
-                <Btn
-                  theme={t}
-                  label="Isi akun demo (dev)"
-                  icon="flash"
-                  variant="soft"
-                  onPress={fillDemoAccount}
-                  disabled={loading}
-                />
-              ) : null}
             </View>
           </Card>
 
           <View style={s.registerRow}>
             <Text style={s.registerText}>Belum punya akun?</Text>
-            <TouchableOpacity onPress={onRegister} activeOpacity={0.7} accessibilityRole="button">
+            <TouchableOpacity onPress={onRegister} activeOpacity={0.7}>
               <Text style={s.link}>Buat akun</Text>
             </TouchableOpacity>
           </View>
@@ -197,35 +117,4 @@ export default function LoginScreen({ theme: t, onLogin, onRegister }) {
   );
 }
 
-const createStyles = (t) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: t.bg },
-    flex: { flex: 1 },
-    content: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: 48 },
-
-    header: { marginBottom: 28 },
-    appName: {
-      fontSize: 32,
-      fontWeight: '900',
-      fontFamily: t.fontBrand, // Otomatis Strava style di Android & iPhone
-      letterSpacing: 1.5,
-      textTransform: 'uppercase',
-      color: t.text,
-    },
-    tagline: { fontSize: 14, color: t.sub, marginTop: 6 },
-
-    forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 12 },
-    link: { fontSize: 13, fontWeight: '700', color: t.primary },
-    errorText: { color: t.danger, fontSize: 13, fontWeight: '600', marginBottom: 12 },
-
-    actions: { gap: 10 },
-
-    registerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      marginTop: 24,
-    },
-    registerText: { fontSize: 13, color: t.sub },
-  });
+const createStyles = (t) => StyleSheet.create({ safe: { flex: 1, backgroundColor: t.bg }, flex: { flex: 1 }, content: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: 48 }, header: { marginBottom: 28 }, appName: { fontSize: 32, fontWeight: '900', fontFamily: t.fontBrand, letterSpacing: 1.5, textTransform: 'uppercase', color: t.text }, tagline: { fontSize: 14, color: t.sub, marginTop: 6 }, forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 12 }, link: { fontSize: 13, fontWeight: '700', color: t.primary }, errorText: { color: t.danger, fontSize: 13, fontWeight: '600', marginBottom: 12 }, actions: { gap: 10 }, registerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24 }, registerText: { fontSize: 13, color: t.sub } });
