@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import ScreenHeader from '../components/screenheader';
+import ScreenHeader from '../components/ScreenHeaderTemp';
 import { Btn, Card, Field, Segment } from '../components/ui';
 import {
   BMI_META,

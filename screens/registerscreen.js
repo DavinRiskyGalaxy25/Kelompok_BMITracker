@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ScreenHeader from '../components/ScreenHeader';
+import ScreenHeader from '../components/ScreenHeaderTemp';
 import { Btn, Card, Field, SectionTitle } from '../components/ui';
 import {
   EMAIL_MAX_LENGTH,
