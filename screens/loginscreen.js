@@ -77,13 +77,17 @@ export default function LoginScreen({ theme: t, onRegister }) {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={s.safe}>
+    <View style={s.safe}>
       <KeyboardAvoidingView
         style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={s.content} 
+          keyboardShouldPersistTaps="handled" 
+          keyboardDismissMode="on-drag" 
+          showsVerticalScrollIndicator={false}
+        >
           <View style={s.header}>
             <Text style={s.appName}>{APP_NAME}</Text>
             <Text style={s.tagline}>Masuk untuk melanjutkan aktivitas Anda.</Text>
@@ -113,8 +117,8 @@ export default function LoginScreen({ theme: t, onRegister }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const createStyles = (t) => StyleSheet.create({ safe: { flex: 1, backgroundColor: t.bg }, flex: { flex: 1 }, content: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: 48 }, header: { marginBottom: 28 }, appName: { fontSize: 32, fontWeight: '900', fontFamily: t.fontBrand, letterSpacing: 1.5, textTransform: 'uppercase', color: t.text }, tagline: { fontSize: 14, color: t.sub, marginTop: 6 }, forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 12 }, link: { fontSize: 13, fontWeight: '700', color: t.primary }, errorText: { color: t.danger, fontSize: 13, fontWeight: '600', marginBottom: 12 }, actions: { gap: 10 }, registerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24 }, registerText: { fontSize: 13, color: t.sub } });
+const createStyles = (t) => StyleSheet.create({ safe: { flex: 1, backgroundColor: t.bg }, flex: { flex: 1 }, content: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: 20}, link: { fontSize: 13, fontWeight: '700', color: t.primary }, errorText: { color: t.danger, fontSize: 13, fontWeight: '600', marginBottom: 12 }, actions: { gap: 10 }, registerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24 }, registerText: { fontSize: 13, color: t.sub } });
