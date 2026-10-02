@@ -198,10 +198,9 @@ export default function App() {
     await saveThemePreference(mode);
   }, []);
 
-  /* --------------------------------- Render -------------------------------- */
-
+  // PERBAIKAN: Jika belum ready, langsung tampilkan SplashScreen (Jangan return null!)
   if (!ready) {
-    return fontsSettled ? <SplashScreen theme={theme} /> : null;
+    return <SplashScreen theme={theme} />;
   }
 
   if (!user) {
@@ -218,6 +217,7 @@ export default function App() {
       </SafeAreaProvider>
     );
   }
+
 
   const ActiveScreen = SCREENS[activeScreen] || HomeScreen;
 
