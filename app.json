@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "VStride",
-    "slug": "VStride-BMITracker",
+    "slug": "kelompokbmitracker",
     "owner": "davinrisky.sci",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "splash": {
           "image": "./assets/images/icon.jpeg",
           "resizeMode": "contain",
-          "backgroundColor": "#0F172A"
+          "backgroundColor": "#000000"
         },
     "scheme": "VStrideapp",
     "userInterfaceStyle": "automatic",
@@ -19,7 +19,7 @@
     "android": {
       "package": "com.vstride.bmitracker", 
       "adaptiveIcon": {
-        "backgroundColor": "#0F172A",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/android-icon-foreground.jpeg",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
