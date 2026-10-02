@@ -22,7 +22,7 @@ export default function SplashScreen({ theme: t }) {
     <View style={s.container}>
       <Animated.View style={{ opacity, transform: [{ scale }] }}>
         <Image
-          source={require('../assets/images/icon.jpeg')}
+          source={require('../assets/images/icon.png')}
           style={s.logo}
           resizeMode="contain"
         />
