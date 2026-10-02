@@ -1,8 +1,8 @@
 /**
- * BMIScreen — Vitra (kalkulator IMT/BMI)
+ * BMIScreen — vstride (kalkulator IMT/BMI)
  *
  * Props:
- *  - theme            token tema Vitra dari App.js (memakai juga `theme.bmi[kategori]`)
+ *  - theme            token tema vstride dari App.js (memakai juga `theme.bmi[kategori]`)
  *  - setActiveScreen  fungsi routing; tombol kembali menuju 'home'
  *
  * Setiap hasil hitung yang valid disimpan ke riwayat (utils/storage.addBmiEntry)
@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import ScreenHeader from '../components/ScreenHeader';
+import ScreenHeader from '../components/screenheader';
 import { Btn, Card, Field, Segment } from '../components/ui';
 import {
   BMI_META,
