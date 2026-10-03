@@ -3,7 +3,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View, Animated } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { useFonts, Syne_800ExtraBold } from '@expo-google-fonts/syne';
 
 import SplashScreen from './screens/splashscreen';
@@ -203,7 +203,7 @@ export default function App() {
 
   if (!user) {
     return (
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <View style={[styles.root, { backgroundColor: theme.bg }]}>
           <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
           {authView === 'register' ? (
@@ -220,7 +220,7 @@ export default function App() {
   const ActiveScreen = SCREENS[activeScreen] || HomeScreen;
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <View style={[styles.root, { backgroundColor: theme.bg }]}>
         <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
         <TrackerProvider>
