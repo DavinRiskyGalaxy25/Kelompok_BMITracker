@@ -282,7 +282,7 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
