@@ -19,7 +19,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import ScreenHeader from '../components/ScreenHeaderTemp';
 import { Btn, Card, Field, Segment } from '../components/ui';
@@ -35,6 +35,7 @@ import { addBmiEntry } from '../utils/storage';
 
 export default function BMIScreen({ theme: t, setActiveScreen }) {
   const s = useMemo(() => createStyles(t), [t]);
+  const insets = useSafeAreaInsets();
 
   const [gender, setGender] = useState('male');
   const [age, setAge] = useState('');
@@ -79,7 +80,7 @@ export default function BMIScreen({ theme: t, setActiveScreen }) {
   const markerPct = result ? getScaleMarkerPct(result.bmi) : 0;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={s.safe}>
+    <View style={[s.safe, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

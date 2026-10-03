@@ -8,12 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Card } from '../components/ui';
 
 export default function StopwatchScreen({ theme: t, setActiveScreen }) {
   const s = useMemo(() => createStyles(t), [t]);
+  const insets = useSafeAreaInsets();
 
   const [isRunning, setIsRunning] = useState(false);
   const [time, setTime] = useState(0); // milidetik

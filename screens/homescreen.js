@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Card } from '../components/ui';
 import { formatDateTime, formatDuration } from '../utils/format';
@@ -45,6 +45,7 @@ const ActiveFlameIcon = ({ size = 38, theme: t }) => (
 
 export default function HomeScreen({ theme: t, user, setActiveScreen }) {
   const s = useMemo(() => createStyles(t), [t]);
+  const insets = useSafeAreaInsets();
   const [activities, setActivities] = useState([]);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
@@ -111,7 +112,7 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
   const activeDaysCount = monthlyCalendar.filter((d) => d && d.active).length;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={s.safe}>
+    <View style={[s.safe, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {/* Header Sapaan */}
         <View style={s.greetingWrap}>

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
@@ -180,7 +180,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
   const [route, setRoute] = useState([]);
 
   const [currentLoc, setCurrentLoc] = useState(null); // Menyimpan koordinat untuk Tombol Center
-
+  const insets = useSafeAreaInsets();
   const timerRef = useRef(null);
   const watchSubRef = useRef(null);
 
@@ -399,7 +399,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           scrollEnabled={false}
         />
 
-        <SafeAreaView edges={['bottom']} style={s.anchoredPanel}>
+        <View style={[s.anchoredPanel, { paddingBottom: Math.max(insets.bottom, 14) }]}>
 
           <View style={s.centerBtnWrapper}>
             <TouchableOpacity 
@@ -471,7 +471,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
               <Ionicons name="map" size={22} color={is3DMap ? t.primary : t.text} />
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
       </View>
 
       <Modal visible={pauseModalVisible} transparent animationType="fade">
