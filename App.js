@@ -1,15 +1,14 @@
 /**
  * Vitra — Root (Multi-Screen, state routing dengan Persistent Bottom Navigation Bar)
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View, Animated } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Syne_800ExtraBold } from '@expo-google-fonts/syne';
 
 import SplashScreen from './screens/splashscreen';
-import LoginScreen from './screens/LoginScreen';
+import LoginScreen from './screens/loginscreen';
 import RegisterScreen from './screens/registerscreen';
-import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View, Animated } from 'react-native';
 import HomeScreen from './screens/homescreen';
 import StopwatchScreen from './screens/stopwatchscreen';
 import RecordScreen from './screens/activityscreen';

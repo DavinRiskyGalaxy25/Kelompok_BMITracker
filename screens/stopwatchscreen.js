@@ -182,7 +182,7 @@ const createStyles = (t) =>
       flex: 1,
       height: 50,
       borderRadius: 14,
-      borderWidth: 1,
+      borderWidth: 0,
       alignItems: 'center',
       justifyContent: 'center',
     },
