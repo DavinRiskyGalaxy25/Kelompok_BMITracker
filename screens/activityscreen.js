@@ -1,4 +1,3 @@
-// screens/activityscreen.js
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
@@ -95,28 +94,28 @@ function createMapHTML(primaryColor = '#2563EB', initialTileUrl) {
 
     var customIcon = L.divIcon({
       className: '',
-      // Tambahkan elemen #heading-arrow di dalam marker
-      html: '<div class="location-marker-outer" style="position: relative; display: flex; justify-content: center; align-items: center;"><div id="heading-arrow" style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #2563EB; position: absolute; top: -14px; transition: transform 0.2s ease-out; transform-origin: 50% 25px;"></div></div>',
+      html: '<div class="location-marker-outer"></div>',
+
       iconSize: [22, 22],
       iconAnchor: [11, 11]
     });
 
-    function updatePointer(lat, lng, heading) {
+    function updatePointer(lat, lng) {
       if (!marker) {
         marker = L.marker([lat, lng], { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
       } else {
         marker.setLatLng([lat, lng]);
       }
-      // Putar panah kompas jika data heading tersedia
-      if (heading !== undefined && heading >= 0) {
-        var arrow = document.getElementById('heading-arrow');
-        if (arrow) arrow.style.transform = 'rotate(' + heading + 'deg)';
-      }
-    }
-    
-    // Pada handleNativeMessage, update bagian 'POS':
-    if (data.type === 'POS') {
-      updatePointer(data.lat, data.lng, data.heading);
+
+
+
+
+
+
+
+
+
+
     }
 
     function updateRoute(pts) {
@@ -173,15 +172,15 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
   const [activityModalVisible, setActivityModalVisible] = useState(false);
   const [pauseModalVisible, setPauseModalVisible] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  
+
   const [is3DMap, setIs3DMap] = useState(false);
   const [recordState, setRecordState] = useState('idle');
   const [elapsed, setElapsed] = useState(0);
   const [distanceM, setDistanceM] = useState(0);
   const [route, setRoute] = useState([]);
-  
+
   const [currentLoc, setCurrentLoc] = useState(null); // Menyimpan koordinat untuk Tombol Center
-  const [mapReady, setMapReady] = useState(false);
+
   const timerRef = useRef(null);
   const watchSubRef = useRef(null);
 
@@ -209,16 +208,13 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     webViewRef.current.injectJavaScript(`window.dispatchEvent(new MessageEvent('message', { data: ${msg} })); true;`);
   }, []);
 
-// Update satelit saat toggle ditekan
+  // Update satelit saat toggle ditekan
   useEffect(() => {
-    if (mapReady) {
-      sendToMap({ type: 'SET_TILE', url: tileUrl });
-    }
-  }, [tileUrl, sendToMap, mapReady]);
+    sendToMap({ type: 'SET_TILE', url: tileUrl });
+  }, [tileUrl, sendToMap]);
 
   // Cari lokasi awal saat layar dimuat
   useEffect(() => {
-    if (!mapReady) return; // Tunggu sampai peta HTML siap
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -231,7 +227,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
         }
       } catch (e) {}
     })();
-  }, [sendToMap, mapReady]);
+  }, [sendToMap]);
 
   useEffect(() => {
     if (recordState === 'recording') {
@@ -260,11 +256,11 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           const current = {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
-            heading: loc.coords.heading
+
           };
 
           setCurrentLoc(current); // Selalu simpan lokasi terbaru
-          sendToMap({ type: 'POS', lat: current.latitude, lng: current.longitude, heading: current.heading });
+          sendToMap({ type: 'POS', lat: current.latitude, lng: current.longitude });
 
           if (!lastAnchorRef.current) {
             lastAnchorRef.current = current;
@@ -401,11 +397,10 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           mixedContentMode="always"
           bounces={false}
           scrollEnabled={false}
-          onLoadEnd={() => setMapReady(true)} 
         />
 
         <SafeAreaView edges={['bottom']} style={s.anchoredPanel}>
-          
+
           <View style={s.centerBtnWrapper}>
             <TouchableOpacity 
               activeOpacity={0.8} 
@@ -568,7 +563,7 @@ const createStyles = (t) =>
     mapContainer: { flex: 1, position: 'relative' },
     webview: { flex: 1, backgroundColor: '#E2E8F0' },
     anchoredPanel: { position: 'absolute', bottom: 14, left: 16, right: 16, zIndex: 10 },
-    
+
     centerBtnWrapper: { alignItems: 'flex-end', marginBottom: 14, paddingRight: 4 },
     centerBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
 
