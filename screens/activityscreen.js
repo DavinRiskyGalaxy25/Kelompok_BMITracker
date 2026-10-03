@@ -181,7 +181,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
   const [route, setRoute] = useState([]);
   
   const [currentLoc, setCurrentLoc] = useState(null); // Menyimpan koordinat untuk Tombol Center
-
+  const [mapReady, setMapReady] = useState(false);
   const timerRef = useRef(null);
   const watchSubRef = useRef(null);
 
@@ -209,13 +209,16 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
     webViewRef.current.injectJavaScript(`window.dispatchEvent(new MessageEvent('message', { data: ${msg} })); true;`);
   }, []);
 
-  // Update satelit saat toggle ditekan
+// Update satelit saat toggle ditekan
   useEffect(() => {
-    sendToMap({ type: 'SET_TILE', url: tileUrl });
-  }, [tileUrl, sendToMap]);
+    if (mapReady) {
+      sendToMap({ type: 'SET_TILE', url: tileUrl });
+    }
+  }, [tileUrl, sendToMap, mapReady]);
 
   // Cari lokasi awal saat layar dimuat
   useEffect(() => {
+    if (!mapReady) return; // Tunggu sampai peta HTML siap
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -228,7 +231,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
         }
       } catch (e) {}
     })();
-  }, [sendToMap]);
+  }, [sendToMap, mapReady]);
 
   useEffect(() => {
     if (recordState === 'recording') {
@@ -398,6 +401,7 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           mixedContentMode="always"
           bounces={false}
           scrollEnabled={false}
+          onLoadEnd={() => setMapReady(true)} 
         />
 
         <SafeAreaView edges={['bottom']} style={s.anchoredPanel}>

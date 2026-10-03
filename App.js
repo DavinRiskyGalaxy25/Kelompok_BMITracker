@@ -86,15 +86,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState('login'); 
   const [activeScreen, setActiveScreen] = useState('home');
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-  fadeAnim.setValue(0);
-  Animated.timing(fadeAnim, {
-    toValue: 1,
-    duration: 350, // Durasi animasi 350ms
-    useNativeDriver: true,
-  }).start();
-}, [activeScreen]);
   const [themeMode, setThemeMode] = useState(null);
   const darkMode = themeMode ? themeMode === 'dark' : systemScheme === 'dark';
   const theme = useMemo(() => buildTheme(darkMode), [darkMode]);
@@ -234,7 +225,6 @@ export default function App() {
         <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
         <TrackerProvider>
           <View style={styles.screenContainer}>
-            <Animated.View style={[{ flex: 1, opacity: fadeAnim }]}>
             <ActiveScreen
               key={activeScreen}
               theme={theme}
@@ -245,7 +235,6 @@ export default function App() {
               onUpdateUser={handleUpdateUser}
               setActiveScreen={navigate}
             />
-            </Animated.View>
           </View>
           
           <BottomNavBar activeScreen={activeScreen} setActiveScreen={navigate} theme={theme} />
