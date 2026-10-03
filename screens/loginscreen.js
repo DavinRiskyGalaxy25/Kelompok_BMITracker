@@ -16,7 +16,7 @@ import { Btn, Card, Field, SectionTitle } from '../components/ui';
 import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, normalizeEmail, validateLogin } from '../utils/validation';
 import { supabase } from '../utils/supabase'; // <-- KONEKSI SUPABASE
 
-const APP_NAME = 'VSTRIDE';
+const APP_NAME = 'VITASTRIDE';
 
 export default function LoginScreen({ theme: t, onRegister }) {
   const s = useMemo(() => createStyles(t), [t]);

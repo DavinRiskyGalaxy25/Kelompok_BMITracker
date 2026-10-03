@@ -95,17 +95,28 @@ function createMapHTML(primaryColor = '#2563EB', initialTileUrl) {
 
     var customIcon = L.divIcon({
       className: '',
-      html: '<div class="location-marker-outer"></div>',
+      // Tambahkan elemen #heading-arrow di dalam marker
+      html: '<div class="location-marker-outer" style="position: relative; display: flex; justify-content: center; align-items: center;"><div id="heading-arrow" style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #2563EB; position: absolute; top: -14px; transition: transform 0.2s ease-out; transform-origin: 50% 25px;"></div></div>',
       iconSize: [22, 22],
       iconAnchor: [11, 11]
     });
 
-    function updatePointer(lat, lng) {
+    function updatePointer(lat, lng, heading) {
       if (!marker) {
         marker = L.marker([lat, lng], { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
       } else {
         marker.setLatLng([lat, lng]);
       }
+      // Putar panah kompas jika data heading tersedia
+      if (heading !== undefined && heading >= 0) {
+        var arrow = document.getElementById('heading-arrow');
+        if (arrow) arrow.style.transform = 'rotate(' + heading + 'deg)';
+      }
+    }
+    
+    // Pada handleNativeMessage, update bagian 'POS':
+    if (data.type === 'POS') {
+      updatePointer(data.lat, data.lng, data.heading);
     }
 
     function updateRoute(pts) {
@@ -246,10 +257,11 @@ export default function RecordScreen({ theme: t, setActiveScreen }) {
           const current = {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
+            heading: loc.coords.heading
           };
 
           setCurrentLoc(current); // Selalu simpan lokasi terbaru
-          sendToMap({ type: 'POS', lat: current.latitude, lng: current.longitude });
+          sendToMap({ type: 'POS', lat: current.latitude, lng: current.longitude, heading: current.heading });
 
           if (!lastAnchorRef.current) {
             lastAnchorRef.current = current;
