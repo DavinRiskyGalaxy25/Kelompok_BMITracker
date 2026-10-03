@@ -214,7 +214,7 @@ export default function BMIScreen({ theme: t, setActiveScreen }) {
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

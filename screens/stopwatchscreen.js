@@ -68,7 +68,7 @@ export default function StopwatchScreen({ theme: t, setActiveScreen }) {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={s.safe}>
+    <View style={[s.safe, { paddingTop: insets.top }]}>
       <StatusBar barStyle={t.isDark ? 'light-content' : 'dark-content'} backgroundColor={t.bg} />
 
       <View style={s.container}>
@@ -144,7 +144,7 @@ export default function StopwatchScreen({ theme: t, setActiveScreen }) {
           }
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

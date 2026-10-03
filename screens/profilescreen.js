@@ -33,6 +33,7 @@ export default function ProfileScreen({
   onUpdateUser,
 }) {
   const s = useMemo(() => createStyles(t), [t]);
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState('history'); // 'history' | 'settings'
   const [activities, setActivities] = useState([]);
@@ -72,7 +73,7 @@ export default function ProfileScreen({
   };
 
   return (
-    <SafeAreaView edges={['top']} style={s.safe}>
+    <View style={[s.safe, { paddingTop: insets.top }]}>
       {/* HEADER: Hanya Judul, Tanpa Tombol Kembali */}
 
       <View style={s.container}>
@@ -231,7 +232,7 @@ export default function ProfileScreen({
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
