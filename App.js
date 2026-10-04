@@ -1,10 +1,12 @@
 /**
  * Vitra — Root (Multi-Screen, state routing dengan Persistent Bottom Navigation Bar)
+ * FIXED: SDK 57 Fake Splash Screen Bypass untuk mengatasi bug background putih & garis-garis Expo Go
  */
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View, Animated } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View, Image } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { useFonts, Syne_800ExtraBold } from '@expo-google-fonts/syne';
+import * as ExpoSplashScreen from 'expo-splash-screen'; // <-- IMPORT KONTROL SPLASH NATIVE
 
 import SplashScreen from './screens/splashscreen';
 import LoginScreen from './screens/loginscreen';
@@ -20,11 +22,15 @@ import { TrackerProvider } from './hooks/usetracker';
 
 // Kita hanya mengambil theme preference, sesi ditangani Supabase
 import { getThemePreference, saveThemePreference } from './utils/storage';
-import { supabase } from './utils/supabase'; // <-- KONEKSI SUPABASE
+import { supabase } from './utils/supabase'; 
+
+/* --------------------------------- Kunci Splash Screen Native Bawaan Expo --------------------------------- */
+// Ini perintah krusial agar Expo Go tidak otomatis menutup splash screen-nya sendiri
+ExpoSplashScreen.preventAutoHideAsync().catch(() => {});
 
 /* ------------------------------ Constants ------------------------------ */
 
-const MIN_SPLASH_MS = 1500;
+const MIN_SPLASH_MS = 1800; // Ditingkatkan sedikit agar transisi loading Supabase & Font halus
 const DEFAULT_USER_NAME = 'Vitra User';
 
 const THEMES = {
@@ -123,7 +129,11 @@ export default function App() {
       }
 
       await splashDelay;
-      if (active) setBooting(false);
+      if (active) {
+        setBooting(false);
+        // FORCE HIDE: Matikan splash native bawaan Expo Go secara paksa di sini
+        await ExpoSplashScreen.hideAsync().catch(() => {});
+      }
     })();
 
     // LISTENER SUPABASE: Deteksi otomatis saat User mendaftar, login, atau logout
@@ -168,12 +178,11 @@ export default function App() {
     return () => subscription.remove();
   }, [user, activeScreen, authView]);
 
-  /* -------------------------------- Session ------------------------------- */
+  /* ------------------------------ User Update & Logout ------------------------------ */
 
-  // Memperbarui nama akun langsung ke database Supabase
   const handleUpdateUser = useCallback(async (patch) => {
     if (patch.name) {
-      const { data, error } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         data: { name: patch.name }
       });
       if (!error) {
@@ -182,10 +191,8 @@ export default function App() {
     }
   }, []);
 
-  // Logout dari Supabase
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();
-    // setUser(null) otomatis dipanggil oleh onAuthStateChange di atas
   }, []);
 
   /* --------------------------------- Theme -------------------------------- */
@@ -196,11 +203,19 @@ export default function App() {
     await saveThemePreference(mode);
   }, []);
 
-  // PERBAIKAN: Jika belum ready, langsung tampilkan SplashScreen (Jangan return null!)
+  /* ------------------- FAKE NATIVE SPLASH BYPASS (ANTI BACKGROUND PUTIH EXPO GO) ------------------- */
+  // Selama aset font belum ter-load atau Supabase masih nge-booting, render Fake Splash Screen buatan kita sendiri
   if (!ready) {
-    return <SplashScreen theme={theme} />;
+    return (
+      <View style={[styles.fakeSplashContainer, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+        {/* Memanggil file splash screen kustom lu yang aman dari distorsi Expo Go */}
+        <SplashScreen theme={theme} />
+      </View>
+    );
   }
 
+  /* --------------------------------- Auth Screen --------------------------------- */
   if (!user) {
     return (
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
@@ -216,7 +231,7 @@ export default function App() {
     );
   }
 
-
+  /* --------------------------------- Main App Screen --------------------------------- */
   const ActiveScreen = SCREENS[activeScreen] || HomeScreen;
 
   return (
@@ -247,4 +262,9 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   screenContainer: { flex: 1 },
+  fakeSplashContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
 });
