@@ -8,11 +8,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "vstrideapp",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "android": {
       "package": "com.vstride.bmitracker",
       "adaptiveIcon": {
@@ -23,12 +18,21 @@
       }
     },
     "extra": {
-      "eas": {
-        "projectId": "a0adcf53-da5b-48da-af48-aae0e3e49516"
-      }
+      "eas": { "projectId": "a0adcf53-da5b-48da-af48-aae0e3e49516" }
     },
     "plugins": [
-      "expo-splash-screen"
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#000000",
+          "image": "./assets/images/splash-blank.png",
+          "imageWidth": 100,
+          "dark": {
+            "backgroundColor": "#000000",
+            "image": "./assets/images/splash-blank.png"
+          }
+        }
+      ]
     ]
   }
 }
