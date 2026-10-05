@@ -2,7 +2,7 @@
   "expo": {
     "name": "VitaStride",
     "slug": "kelompokbmitracker",
-    "owner": "davinrisky.sci",
+    "owner": "davinnurs-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -34,7 +34,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "503f0ab3-1613-4370-9a01-77554276692e"
+        "projectId": ""
       }
     },
     "plugins": [
@@ -73,4 +73,3 @@
     ]
   }
 }
-
