@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ScreenHeader from '../components/ScreenHeaderTemp';
 import { Btn, Card, Field, SectionTitle } from '../components/ui';
@@ -27,6 +27,7 @@ import { supabase } from '../utils/supabase'; // <-- KONEKSI SUPABASE
 
 export default function RegisterScreen({ theme: t, onBackToLogin }) {
   const s = useMemo(() => createStyles(t), [t]);
+  const insets = useSafeAreaInsets();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -131,3 +132,4 @@ export default function RegisterScreen({ theme: t, onBackToLogin }) {
 }
 
 const createStyles = (t) => StyleSheet.create({ safe: { flex: 1, backgroundColor: t.bg }, flex: { flex: 1 }, content: { padding: 16, paddingBottom: 20 }, subtitle: { fontSize: 14, color: t.sub, marginTop: -8, marginBottom: 24, lineHeight: 20 }, errorText: { color: t.danger, fontSize: 13, fontWeight: '600', marginBottom: 12 }, loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24 }, loginText: { fontSize: 13, color: t.sub }, link: { fontSize: 13, fontWeight: '700', color: t.primary } });
+//p

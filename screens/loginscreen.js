@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Card, Field, SectionTitle } from '../components/ui';
 import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, normalizeEmail, validateLogin } from '../utils/validation';
@@ -20,6 +20,7 @@ const APP_NAME = 'VITASTRIDE';
 
 export default function LoginScreen({ theme: t, onRegister }) {
   const s = useMemo(() => createStyles(t), [t]);
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
