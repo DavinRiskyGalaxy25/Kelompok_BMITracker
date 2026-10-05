@@ -1,12 +1,12 @@
 /**
  * Vitra — Root (Multi-Screen, state routing dengan Persistent Bottom Navigation Bar)
- * FIXED: SDK 57 Fake Splash Screen Bypass untuk mengatasi bug background putih & garis-garis Expo Go
+ * FIXED: SDK 57 Fake Splash Screen Bypass & Smooth Layout Transition
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View, Image } from 'react-native';
+import { BackHandler, Platform, StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { useFonts, Syne_800ExtraBold } from '@expo-google-fonts/syne';
-import * as ExpoSplashScreen from 'expo-splash-screen'; // <-- IMPORT KONTROL SPLASH NATIVE
+import * as ExpoSplashScreen from 'expo-splash-screen'; 
 
 import SplashScreen from './screens/splashscreen';
 import LoginScreen from './screens/loginscreen';
@@ -20,17 +20,15 @@ import ProfileScreen from './screens/profilescreen';
 import BottomNavBar from './components/BottomNavBar';
 import { TrackerProvider } from './hooks/usetracker';
 
-// Kita hanya mengambil theme preference, sesi ditangani Supabase
 import { getThemePreference, saveThemePreference } from './utils/storage';
 import { supabase } from './utils/supabase'; 
 
-/* --------------------------------- Kunci Splash Screen Native Bawaan Expo --------------------------------- */
-// Ini perintah krusial agar Expo Go tidak otomatis menutup splash screen-nya sendiri
+/* --------------------------------- Kunci Splash Screen Native --------------------------------- */
 ExpoSplashScreen.preventAutoHideAsync().catch(() => {});
 
 /* ------------------------------ Constants ------------------------------ */
 
-const MIN_SPLASH_MS = 1800; // Ditingkatkan sedikit agar transisi loading Supabase & Font halus
+const MIN_SPLASH_MS = 1800;
 const DEFAULT_USER_NAME = 'Vitra User';
 
 const THEMES = {
@@ -40,7 +38,7 @@ const THEMES = {
     onPrimary: '#FFFFFF', shadow: '#0F172A',
   },
   dark: {
-    bg: '#09090B', card: '#18181B', primary: '#FF2D95', text: '#FAFAFA', // MAGENTA
+    bg: '#09090B', card: '#18181B', primary: '#FF2D95', text: '#FAFAFA',
     sub: '#A1A1AA', border: '#27272A', input: '#27272A', danger: '#EF4444',
     onPrimary: '#FFFFFF', shadow: '#000000',
   },
@@ -99,6 +97,11 @@ export default function App() {
   const fontsSettled = fontsLoaded || Boolean(fontError);
   const ready = !booting && fontsSettled;
 
+  /* Callback khusus untuk menutup splash native hanya saat layout kustom sudah dirender */
+  const hideNativeSplash = useCallback(() => {
+    ExpoSplashScreen.hideAsync().catch(() => {});
+  }, []);
+
   /* ------------------------------ Bootstrap & Auth Listener ------------------------------ */
 
   useEffect(() => {
@@ -107,7 +110,6 @@ export default function App() {
 
     (async () => {
       try {
-        // Tarik sesi Supabase dan preferensi tema bersamaan
         const [themeRes, sessionRes] = await Promise.all([
           getThemePreference(),
           supabase.auth.getSession()
@@ -130,13 +132,10 @@ export default function App() {
 
       await splashDelay;
       if (active) {
-        setBooting(false);
-        // FORCE HIDE: Matikan splash native bawaan Expo Go secara paksa di sini
-        await ExpoSplashScreen.hideAsync().catch(() => {});
+        setBooting(false); // hideAsync dihapus dari sini
       }
     })();
 
-    // LISTENER SUPABASE: Deteksi otomatis saat User mendaftar, login, atau logout
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setUser({
@@ -203,13 +202,14 @@ export default function App() {
     await saveThemePreference(mode);
   }, []);
 
-  /* ------------------- FAKE NATIVE SPLASH BYPASS (ANTI BACKGROUND PUTIH EXPO GO) ------------------- */
-  // Selama aset font belum ter-load atau Supabase masih nge-booting, render Fake Splash Screen buatan kita sendiri
+  /* ------------------- FAKE NATIVE SPLASH BYPASS ------------------- */
   if (!ready) {
     return (
-      <View style={[styles.fakeSplashContainer, { backgroundColor: theme.bg }]}>
-        <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
-        {/* Memanggil file splash screen kustom lu yang aman dari distorsi Expo Go */}
+      <View 
+        style={[styles.fakeSplashContainer, { backgroundColor: '#000000' }]}
+        onLayout={hideNativeSplash}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
         <SplashScreen theme={theme} />
       </View>
     );
