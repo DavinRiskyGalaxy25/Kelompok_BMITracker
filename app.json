@@ -18,7 +18,9 @@
       }
     },
     "extra": {
-      "eas": { "projectId": "a0adcf53-da5b-48da-af48-aae0e3e49516" }
+      "eas": {
+        "projectId": "a0adcf53-da5b-48da-af48-aae0e3e49516"
+      }
     },
     "plugins": [
       [
@@ -32,7 +34,8 @@
             "image": "./assets/images/splash-blank.png"
           }
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
