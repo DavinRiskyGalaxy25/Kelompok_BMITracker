@@ -14,6 +14,7 @@ import RegisterScreen from './screens/registerscreen';
 import HomeScreen from './screens/homescreen';
 import StopwatchScreen from './screens/stopwatchscreen';
 import RecordScreen from './screens/activityscreen';
+import RunSummaryScreen from './screens/runsummaryscreen';
 import BMIScreen from './screens/bmiscreen';
 import ProfileScreen from './screens/profilescreen';
 
@@ -55,6 +56,7 @@ const SCREENS = {
   home: HomeScreen,
   stopwatch: StopwatchScreen,
   record: RecordScreen,
+  runsummary: RunSummaryScreen,
   bmi: BMIScreen,
   profile: ProfileScreen,
 };
@@ -252,7 +254,9 @@ export default function App() {
             />
           </View>
           
-          <BottomNavBar activeScreen={activeScreen} setActiveScreen={navigate} theme={theme} />
+          {activeScreen !== 'runsummary' && activeScreen !== 'record' && (
+            <BottomNavBar activeScreen={activeScreen} setActiveScreen={navigate} theme={theme} />
+          )}
         </TrackerProvider>
       </View>
     </SafeAreaProvider>

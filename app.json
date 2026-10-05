@@ -15,6 +15,21 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACTIVITY_RECOGNITION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "ios": {
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "VitaStride memerlukan akses lokasi untuk merekam rute latihan Anda.",
+        "NSMotionUsageDescription": "VitaStride memerlukan akses sensor gerak untuk menghitung langkah kaki Anda.",
+        "NSCameraUsageDescription": "VitaStride memerlukan akses kamera untuk mengambil foto aktivitas.",
+        "NSPhotoLibraryUsageDescription": "VitaStride memerlukan akses galeri untuk melampirkan foto aktivitas."
       }
     },
     "extra": {
@@ -35,7 +50,27 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "VitaStride memerlukan akses lokasi untuk merekam rute latihan Anda."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "VitaStride memerlukan akses sensor gerak untuk menghitung langkah kaki Anda."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "VitaStride memerlukan akses galeri untuk melampirkan foto aktivitas.",
+          "cameraPermission": "VitaStride memerlukan akses kamera untuk mengambil foto aktivitas."
+        }
+      ]
     ]
   }
 }
+

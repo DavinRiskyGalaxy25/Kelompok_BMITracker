@@ -1,591 +1,642 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import * as Location from 'expo-location';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
+import { Card } from "../components/ui";
+import usePedometer from "../hooks/usepedometer";
+import { useTracker } from "../hooks/usetracker";
+import { ACTIVITIES } from "../utils/activities";
+import { formatDuration } from "../utils/format";
+import { setRunSteps } from "../utils/rundata";
 
-import { Card } from '../components/ui';
-import { formatDuration, formatPace } from '../utils/format';
-import { addActivityEntry } from '../utils/storage';
+export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
+  const insets = useSafeAreaInsets();
+  const s = useMemo(() => createStyles(t, insets), [t, insets]);
 
-const ACTIVITIES = [
-  { key: 'run', label: 'Lari', icon: 'footsteps' },
-  { key: 'bike', label: 'Bersepeda', icon: 'bicycle' },
-  { key: 'swim', label: 'Berenang', icon: 'water' },
-];
+  const tracker = useTracker();
+  const pedometer = usePedometer();
 
-function getHaversineDistance(a, b) {
-  const toRad = (x) => (x * Math.PI) / 180;
-  const R = 6371000;
-  const dLat = toRad(b.latitude - a.latitude);
-  const dLon = toRad(b.longitude - a.longitude);
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.latitude);
-  const val =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-  return 2 * R * Math.asin(Math.sqrt(val));
-}
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
 
-function getBearing(a, b) {
-  const toRad = (x) => (x * Math.PI) / 180;
-  const toDeg = (x) => (x * 180) / Math.PI;
-  const dLon = toRad(b.longitude - a.longitude);
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.latitude);
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
+  // Initialize tracker on mount
+  useEffect(() => {
+    tracker.prepare();
+    return () => {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-// HTML Map dengan dukungan pergantian Satelit secara dinamis
-function createMapHTML(primaryColor = '#2563EB', initialTileUrl) {
-  return `
-<!DOCTYPE html>
+  // Sync pedometer with tracker
+  useEffect(() => {
+    if (tracker.isRecording) {
+      pedometer.startTracking();
+    } else {
+      pedometer.stopTracking();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracker.isRecording]);
+
+  const handleStart = () => {
+    tracker.start();
+  };
+
+  const handlePause = () => {
+    setShowPauseModal(true);
+  };
+
+  const handleResume = () => {
+    setShowPauseModal(false);
+  };
+
+  const handleStopAndSave = async () => {
+    setShowPauseModal(false);
+    setRunSteps(pedometer.steps || 0);
+    await tracker.stop();
+    setActiveScreen("runsummary");
+  };
+
+  const handleDiscard = () => {
+    setShowPauseModal(false);
+    tracker.reset();
+  };
+
+  // Stable map HTML — tile changes are injected via postMessage
+  const mapHtml = useMemo(() => {
+    const initialTile = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    const loc = tracker.userLocation || { latitude: -6.2, longitude: 106.8 };
+    return `<!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
   <style>
-    html, body, #map {
-      width: 100vw;
-      height: 100vh;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #E2E8F0;
-    }
-    .leaflet-control-attribution { display: none !important; }
-    .location-marker-outer {
-      width: 22px; height: 22px;
-      background: ${primaryColor};
-      border: 3px solid #FFFFFF;
-      border-radius: 50%;
-      box-shadow: 0 0 0 5px ${primaryColor}40, 0 3px 6px rgba(0,0,0,0.3);
-    }
+    *{margin:0;padding:0}
+    html,body,#map{width:100%;height:100%;overflow:hidden}
+    .leaflet-control-attribution{display:none!important}
+    .dot{width:18px;height:18px;background:${t.primary};border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 4px ${t.primary}40}
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <script>
-    var map = L.map('map', {
-      zoomControl: false,
-      attributionControl: false,
-      preferCanvas: true
-    }).setView([-7.2575, 112.7521], 16);
+<div id="map"></div>
+<script>
+  var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([${loc.latitude},${loc.longitude}],16);
+  var tile=L.tileLayer('${initialTile}',{maxZoom:19,subdomains:'abc'}).addTo(map);
+  var marker=null,routeLayer=L.layerGroup().addTo(map);
+  var icon=L.divIcon({className:'',html:'<div class="dot"></div>',iconSize:[18,18],iconAnchor:[9,9]});
 
-    // Menyimpan referensi ke layer peta agar URL-nya bisa diubah untuk mode satelit
-    var tileLayer = L.tileLayer('${initialTileUrl}', {
-      maxZoom: 19,
-      subdomains: 'abc'
-    }).addTo(map);
-
-    var marker = null;
-    var routeLayer = L.layerGroup().addTo(map);
-
-    var customIcon = L.divIcon({
-      className: '',
-      html: '<div class="location-marker-outer"></div>',
-
-      iconSize: [22, 22],
-      iconAnchor: [11, 11]
-    });
-
-    function updatePointer(lat, lng) {
-      if (!marker) {
-        marker = L.marker([lat, lng], { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
-      } else {
-        marker.setLatLng([lat, lng]);
+  function handle(e){
+    try{
+      var d=JSON.parse(e.data);
+      if(d.type==='POS'){
+        if(!marker){marker=L.marker([d.lat,d.lng],{icon:icon,zIndexOffset:1000}).addTo(map)}
+        else{marker.setLatLng([d.lat,d.lng])}
+        map.panTo([d.lat,d.lng],{animate:true,duration:0.5});
       }
-
-
-
-
-
-
-
-
-
-
-    }
-
-    function updateRoute(pts) {
-      routeLayer.clearLayers();
-      if (!Array.isArray(pts) || pts.length < 2) return;
-      L.polyline(pts, {
-        color: '${primaryColor}',
-        weight: 5,
-        opacity: 0.95,
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(routeLayer);
-    }
-
-    function handleNativeMessage(e) {
-      try {
-        var data = JSON.parse(e.data);
-        if (data.type === 'POS') {
-          updatePointer(data.lat, data.lng);
+      if(d.type==='ROUTE'){
+        routeLayer.clearLayers();
+        if(d.pts&&d.pts.length>1){
+          L.polyline(d.pts,{color:'${t.primary}',weight:5,opacity:0.9,lineCap:'round',lineJoin:'round'}).addTo(routeLayer);
         }
-        if (data.type === 'ROUTE') {
-          updateRoute(data.pts);
-        }
-        if (data.type === 'CENTER') {
-          map.setView([data.lat, data.lng], 17, { animate: true });
-        }
-        if (data.type === 'RESET') {
-          routeLayer.clearLayers();
-        }
-        if (data.type === 'SET_TILE') {
-          tileLayer.setUrl(data.url);
-        }
-      } catch(err) {}
-    }
-
-    document.addEventListener('message', handleNativeMessage);
-    window.addEventListener('message', handleNativeMessage);
-
-    // Mencegah bagian abu-abu pada peta akibat error render WebView
-    setInterval(function() {
-      map.invalidateSize();
-    }, 1500);
-  </script>
+      }
+      if(d.type==='CENTER'){map.setView([d.lat,d.lng],17,{animate:true})}
+      if(d.type==='TILE'){tile.setUrl(d.url)}
+      if(d.type==='RESET'){routeLayer.clearLayers();if(marker){map.removeLayer(marker);marker=null}}
+    }catch(x){}
+  }
+  document.addEventListener('message',handle);
+  window.addEventListener('message',handle);
+  setTimeout(function(){map.invalidateSize()},300);
+  setInterval(function(){map.invalidateSize()},2000);
+<\/script>
 </body>
-</html>
-`;
-}
+</html>`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-export default function RecordScreen({ theme: t, setActiveScreen }) {
-  const s = useMemo(() => createStyles(t), [t]);
   const webViewRef = useRef(null);
 
-  const [selectedActivity, setSelectedActivity] = useState(ACTIVITIES[0]);
-  const [activityModalVisible, setActivityModalVisible] = useState(false);
-  const [pauseModalVisible, setPauseModalVisible] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
-
-  const [is3DMap, setIs3DMap] = useState(false);
-  const [recordState, setRecordState] = useState('idle');
-  const [elapsed, setElapsed] = useState(0);
-  const [distanceM, setDistanceM] = useState(0);
-  const [route, setRoute] = useState([]);
-
-  const [currentLoc, setCurrentLoc] = useState(null); // Menyimpan koordinat untuk Tombol Center
-  const insets = useSafeAreaInsets();
-  const timerRef = useRef(null);
-  const watchSubRef = useRef(null);
-
-  const lastPointRef = useRef(null);
-  const lastAnchorRef = useRef(null);
-  const lastBearingRef = useRef(null);
-
-  const km = distanceM / 1000;
-  const currentPace = formatPace(elapsed, km);
-
-  // Menentukan URL Tile berdasarkan mode satelit
-  const tileUrl = useMemo(() => {
-    if (is3DMap) {
-      return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-    }
-    return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  }, [is3DMap]);
-
-  // Generate HTML hanya 1 kali
-  const mapHTML = useRef(createMapHTML(t.primary, tileUrl)).current;
+  const handleCenterMap = useCallback(() => {
+    if (!webViewRef.current || !tracker.userLocation) return;
+    const { latitude, longitude } = tracker.userLocation;
+    webViewRef.current.injectJavaScript(
+      `if(typeof map!=='undefined'){map.setView([${latitude},${longitude}],16)}true;`
+    );
+  }, [tracker.userLocation]);
 
   const sendToMap = useCallback((data) => {
     if (!webViewRef.current) return;
     const msg = JSON.stringify(JSON.stringify(data));
-    webViewRef.current.injectJavaScript(`window.dispatchEvent(new MessageEvent('message', { data: ${msg} })); true;`);
+    webViewRef.current.injectJavaScript(
+      `window.dispatchEvent(new MessageEvent('message',{data:${msg}}));true;`,
+    );
   }, []);
 
-  // Update satelit saat toggle ditekan
+  // Update marker position when userLocation changes
   useEffect(() => {
-    sendToMap({ type: 'SET_TILE', url: tileUrl });
-  }, [tileUrl, sendToMap]);
+    if (tracker.userLocation) {
+      sendToMap({
+        type: "POS",
+        lat: tracker.userLocation.latitude,
+        lng: tracker.userLocation.longitude,
+      });
+    }
+  }, [tracker.userLocation, sendToMap]);
 
-  // Cari lokasi awal saat layar dimuat
+  // Update route polyline
   useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          const initialLoc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-          setCurrentLoc(initialLoc);
-          sendToMap({ type: 'POS', lat: initialLoc.latitude, lng: initialLoc.longitude });
-          sendToMap({ type: 'CENTER', lat: initialLoc.latitude, lng: initialLoc.longitude });
-        }
-      } catch (e) {}
-    })();
-  }, [sendToMap]);
+    if (tracker.route && tracker.route.length > 0) {
+      const pts = tracker.route.map((p) => [p.latitude, p.longitude]);
+      sendToMap({ type: "ROUTE", pts });
+    }
+  }, [tracker.route, sendToMap]);
 
+  // Toggle satellite/standard tile
   useEffect(() => {
-    if (recordState === 'recording') {
-      timerRef.current = setInterval(() => {
-        setElapsed((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [recordState]);
+    const url =
+      tracker.mapType === "satellite"
+        ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    sendToMap({ type: "TILE", url });
+  }, [tracker.mapType, sendToMap]);
 
-  const startGPS = async () => {
-    try {
-      watchSubRef.current = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Highest,
-          timeInterval: 2000,
-          distanceInterval: 3, // JITTER FIX: Minimal melangkah 3 meter
-        },
-        (loc) => {
-          if (loc.coords.accuracy > 15) return; // JITTER FIX: Abaikan data tidak akurat
-
-          const current = {
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-
-          };
-
-          setCurrentLoc(current); // Selalu simpan lokasi terbaru
-          sendToMap({ type: 'POS', lat: current.latitude, lng: current.longitude });
-
-          if (!lastAnchorRef.current) {
-            lastAnchorRef.current = current;
-            lastPointRef.current = current;
-            setRoute([[current.latitude, current.longitude]]);
-            sendToMap({ type: 'CENTER', lat: current.latitude, lng: current.longitude });
-            return;
-          }
-
-          const distFromLast = getHaversineDistance(lastPointRef.current, current);
-          if (distFromLast < 2) return; 
-
-          setDistanceM((prev) => prev + distFromLast);
-          lastPointRef.current = current;
-
-          const distFromAnchor = getHaversineDistance(lastAnchorRef.current, current);
-          const currentBearing = getBearing(lastAnchorRef.current, current);
-
-          let angleDiff = 0;
-          if (lastBearingRef.current !== null) {
-            angleDiff = Math.abs(currentBearing - lastBearingRef.current);
-            if (angleDiff > 180) angleDiff = 360 - angleDiff;
-          }
-
-          setRoute((prevRoute) => {
-            let nextRoute = [...prevRoute];
-            if (angleDiff > 15 || distFromAnchor >= 25 || lastBearingRef.current === null) {
-              nextRoute.push([current.latitude, current.longitude]);
-              lastAnchorRef.current = current;
-              lastBearingRef.current = currentBearing;
-            } else {
-              if (nextRoute.length > 1) {
-                nextRoute[nextRoute.length - 1] = [current.latitude, current.longitude];
-              } else {
-                nextRoute.push([current.latitude, current.longitude]);
-              }
-            }
-            sendToMap({ type: 'ROUTE', pts: nextRoute });
-            return nextRoute;
-          });
-        }
-      );
-    } catch (e) {
-      console.log('Error GPS:', e);
-    }
-  };
-
-  const stopGPS = () => {
-    if (watchSubRef.current) {
-      watchSubRef.current.remove();
-      watchSubRef.current = null;
-    }
-    lastPointRef.current = null;
-    lastAnchorRef.current = null;
-    lastBearingRef.current = null;
-  };
-
-  const handleStart = async () => {
-    setRecordState('recording');
-    await startGPS();
-  };
-
-  const handlePauseTrigger = () => {
-    setRecordState('paused');
-    stopGPS();
-    setConfirmDiscard(false);
-    setPauseModalVisible(true);
-  };
-
-  const handleResume = () => {
-    setPauseModalVisible(false);
-    setRecordState('recording');
-    startGPS();
-  };
-
-  const handleSave = async () => {
-    setPauseModalVisible(false);
-    setRecordState('idle');
-    stopGPS();
-
-    await addActivityEntry({
-      activity: selectedActivity.key,
-      label: selectedActivity.label,
-      km: Number(km.toFixed(2)),
-      durationSec: elapsed,
-      calories: Math.round(km * 60),
-      pace: currentPace,
-      speed: elapsed > 0 ? Number((km / (elapsed / 3600)).toFixed(1)) : 0,
-      route,
-      date: new Date().toISOString(),
-    });
-
-    setElapsed(0);
-    setDistanceM(0);
-    setRoute([]);
-    sendToMap({ type: 'RESET' });
-
-    if (setActiveScreen) setActiveScreen('profile');
-  };
-
-  const executeDiscard = () => {
-    setPauseModalVisible(false);
-    setConfirmDiscard(false);
-    setRecordState('idle');
-
-    stopGPS();
-    if (timerRef.current) clearInterval(timerRef.current);
-
-    setElapsed(0);
-    setDistanceM(0);
-    setRoute([]);
-    sendToMap({ type: 'RESET' });
-  };
-
-  // TOMBOL CENTER FIX: Langsung ambil data dari memori 'currentLoc'
-  const handleCenterLocation = () => {
-    if (currentLoc) {
-      sendToMap({ type: 'CENTER', lat: currentLoc.latitude, lng: currentLoc.longitude });
-    }
-  };
+  const distanceKm = tracker.distance
+    ? (tracker.distance / 1000).toFixed(2)
+    : "0.00";
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle={t.isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+    <View style={s.container}>
+      <StatusBar
+        barStyle={t.isDark ? "light-content" : "dark-content"}
+        translucent
+        backgroundColor="transparent"
+      />
 
-      <View style={s.mapContainer}>
-        <WebView
-          ref={webViewRef}
-          source={{ html: mapHTML }}
-          style={s.webview}
-          originWhitelist={['*']}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          mixedContentMode="always"
-          bounces={false}
-          scrollEnabled={false}
-        />
-
-        <View style={[s.anchoredPanel, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-
-          <View style={s.centerBtnWrapper}>
-            <TouchableOpacity 
-              activeOpacity={0.8} 
-              onPress={handleCenterLocation} 
-              style={[s.centerBtn, { backgroundColor: t.card }]}
-            >
-              <Ionicons name="locate" size={24} color={t.primary} />
-            </TouchableOpacity>
+      {/* Map — fills entire screen behind overlays */}
+      <WebView
+        ref={webViewRef}
+        source={{ html: mapHtml }}
+        style={s.map}
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        originWhitelist={["*"]}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        mixedContentMode="always"
+        androidLayerType="hardware"
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={s.mapLoading}>
+            <ActivityIndicator size="large" color={t.primary} />
+            <Text style={{ color: t.sub, marginTop: 8 }}>Memuat peta...</Text>
           </View>
+        )}
+      />
 
-          <Card theme={t} style={s.floatingHUD}>
-            <View style={s.hudCol}>
-              <Text style={[s.hudValue, { color: t.text }]}>{formatDuration(elapsed)}</Text>
-              <Text style={[s.hudLabel, { color: t.sub }]}>WAKTU</Text>
-            </View>
-            <View style={[s.hudDivider, { backgroundColor: t.border }]} />
-            <View style={s.hudCol}>
-              <Text style={[s.hudValue, { color: t.text }]}>{currentPace}</Text>
-              <Text style={[s.hudLabel, { color: t.sub }]}>PACE (T/KM)</Text>
-            </View>
-            <View style={[s.hudDivider, { backgroundColor: t.border }]} />
-            <View style={s.hudCol}>
-              <Text style={[s.hudValue, { color: t.text }]}>{km.toFixed(2)}</Text>
-              <Text style={[s.hudLabel, { color: t.sub }]}>JARAK (KM)</Text>
-            </View>
-          </Card>
+      {/* Center button */}
+      <TouchableOpacity style={s.centerBtn} onPress={handleCenterMap}>
+        <Ionicons name="locate" size={22} color={t.primary} />
+      </TouchableOpacity>
 
-          <View style={s.actionRow}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => recordState === 'idle' && setActivityModalVisible(true)}
-              style={[s.circleBtn, { backgroundColor: t.card }]}
-            >
-              <Ionicons name={selectedActivity.icon} size={22} color={t.text} />
-            </TouchableOpacity>
+      {/* Top Header Controls */}
+      <View style={s.topControls}>
+        <TouchableOpacity
+          style={s.iconButton}
+          onPress={() => setActiveScreen("home")}
+          disabled={tracker.isRecording}
+        >
+          <Ionicons name="arrow-back" size={24} color={t.text} />
+        </TouchableOpacity>
 
-            {recordState === 'idle' ? (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleStart}
-                style={[s.mainCenterBtn, { backgroundColor: t.primary }]}
-              >
-                <Ionicons name="play" size={28} color={t.onPrimary} style={{ marginLeft: 3 }} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handlePauseTrigger}
-                style={[s.mainCenterBtn, { backgroundColor: t.primary }]}
-              >
-                <Ionicons name="pause" size={26} color={t.onPrimary} />
-              </TouchableOpacity>
-            )}
+        <TouchableOpacity
+          style={s.activitySelector}
+          onPress={() => setShowActivityModal(true)}
+          disabled={tracker.isRecording}
+        >
+          <Ionicons
+            name={tracker.activity?.icon || "walk"}
+            size={18}
+            color={t.primary}
+          />
+          <Text style={s.activityText}>
+            {tracker.activity?.label || "Aktivitas"}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={t.sub} />
+        </TouchableOpacity>
 
-            {/* Tombol Toggle Satelit / Standar */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setIs3DMap(!is3DMap)}
-              style={[
-                s.circleBtn,
-                { 
-                  backgroundColor: t.card, 
-                  borderColor: is3DMap ? t.primary : 'transparent', 
-                  borderWidth: is3DMap ? 2 : 0 
-                },
-              ]}
-            >
-              <Ionicons name="map" size={22} color={is3DMap ? t.primary : t.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <TouchableOpacity
+          style={s.iconButton}
+          onPress={() =>
+            tracker.setMapType(
+              tracker.mapType === "standard" ? "satellite" : "standard",
+            )
+          }
+        >
+          <Ionicons
+            name="layers"
+            size={24}
+            color={tracker.mapType === "satellite" ? t.primary : t.text}
+          />
+        </TouchableOpacity>
       </View>
 
-      <Modal visible={pauseModalVisible} transparent animationType="fade">
-        <View style={s.scrimOverlay}>
-          <View style={[s.pauseSheet, { backgroundColor: t.card }]}>
-            {!confirmDiscard ? (
-              <>
-                <View style={s.pauseHeader}>
-                  <View style={[s.pauseBadge, { backgroundColor: `${t.primary}18` }]}>
-                    <Ionicons name="pause" size={20} color={t.primary} />
-                  </View>
-                  <Text style={[s.pauseTitle, { color: t.text }]}>Latihan Dijeda</Text>
-                  <Text style={[s.pauseSubtitle, { color: t.sub }]}>
-                    {km.toFixed(2)} km · {formatDuration(elapsed)}
-                  </Text>
-                </View>
+      {/* Bottom HUD Metrics */}
+      <View style={s.bottomHudContainer}>
+        <Card theme={t} style={s.hudCard}>
+          <View style={s.metricsRow}>
+            <View style={s.metricItem}>
+              <Text style={s.metricLabel}>WAKTU</Text>
+              <Text style={s.metricValue}>
+                {formatDuration(tracker.elapsed || 0)}
+              </Text>
+            </View>
+            <View style={s.metricDivider} />
+            <View style={s.metricItem}>
+              <Text style={s.metricLabel}>LANGKAH</Text>
+              <Text style={s.metricValue}>{pedometer.steps || 0}</Text>
+            </View>
+            <View style={s.metricDivider} />
+            <View style={s.metricItem}>
+              <Text style={s.metricLabel}>JARAK (KM)</Text>
+              <Text style={s.metricValue}>{distanceKm}</Text>
+            </View>
+          </View>
 
-                <View style={s.pauseActionWrap}>
-                  <TouchableOpacity activeOpacity={0.85} onPress={handleResume} style={[s.modalBtn, { backgroundColor: t.primary }]}>
-                    <Ionicons name="play" size={18} color={t.onPrimary} />
-                    <Text style={[s.modalBtnText, { color: t.onPrimary }]}>Lanjutkan Lari</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.85} onPress={handleSave} style={[s.modalBtn, { backgroundColor: t.input }]}>
-                    <Ionicons name="checkmark-circle" size={18} color={t.primary} />
-                    <Text style={[s.modalBtnText, { color: t.text }]}>Selesai & Simpan</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.85} onPress={() => setConfirmDiscard(true)} style={[s.modalBtn, { backgroundColor: `${t.danger}15` }]}>
-                    <Ionicons name="trash-outline" size={18} color={t.danger} />
-                    <Text style={[s.modalBtnText, { color: t.danger }]}>Buang Sesi</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
+          <View style={s.actionRow}>
+            {tracker.starting || !tracker.gpsLoaded ? (
+              <View style={[s.mainButton, { backgroundColor: t.sub }]}>
+                <ActivityIndicator color={t.onPrimary} />
+              </View>
+            ) : !tracker.isRecording ? (
+              <TouchableOpacity style={s.mainButton} onPress={handleStart}>
+                <Ionicons
+                  name="play"
+                  size={32}
+                  color={t.onPrimary}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
             ) : (
-              <>
-                <View style={s.pauseHeader}>
-                  <View style={[s.pauseBadge, { backgroundColor: `${t.danger}18` }]}>
-                    <Ionicons name="warning" size={20} color={t.danger} />
-                  </View>
-                  <Text style={[s.pauseTitle, { color: t.text }]}>Buang Sesi Ini?</Text>
-                  <Text style={[s.pauseSubtitle, { color: t.sub, textAlign: 'center' }]}>
-                    Data rute dan waktu latihan ini akan dihapus permanen.
-                  </Text>
-                </View>
-                <View style={s.pauseActionWrap}>
-                  <TouchableOpacity activeOpacity={0.85} onPress={executeDiscard} style={[s.modalBtn, { backgroundColor: t.danger }]}>
-                    <Ionicons name="trash" size={18} color={t.onPrimary} />
-                    <Text style={[s.modalBtnText, { color: t.onPrimary }]}>Ya, Buang Sesi</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.85} onPress={() => setConfirmDiscard(false)} style={[s.modalBtn, { backgroundColor: t.input }]}>
-                    <Text style={[s.modalBtnText, { color: t.text }]}>Batal</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
+              <TouchableOpacity
+                style={[s.mainButton, { backgroundColor: t.danger }]}
+                onPress={handlePause}
+              >
+                <Ionicons name="pause" size={32} color={t.onPrimary} />
+              </TouchableOpacity>
             )}
           </View>
+        </Card>
+      </View>
+
+      {/* Modal Jeda / Stop */}
+      <Modal visible={showPauseModal} transparent animationType="fade">
+        <View style={s.modalOverlay}>
+          <Card theme={t} style={s.pauseModalCard}>
+            <Text style={s.pauseModalTitle}>Aktivitas Dijeda</Text>
+
+            <TouchableOpacity
+              style={[s.modalBtn, { backgroundColor: t.primary }]}
+              onPress={handleResume}
+            >
+              <Ionicons
+                name="play"
+                size={20}
+                color={t.onPrimary}
+                style={s.modalBtnIcon}
+              />
+              <Text style={[s.modalBtnText, { color: t.onPrimary }]}>
+                Lanjutkan
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.modalBtn, { backgroundColor: t.text }]}
+              onPress={handleStopAndSave}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={t.bg}
+                style={s.modalBtnIcon}
+              />
+              <Text style={[s.modalBtnText, { color: t.bg }]}>
+                Selesai & Simpan
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                s.modalBtn,
+                {
+                  backgroundColor: "transparent",
+                  borderColor: t.danger,
+                  borderWidth: 1,
+                },
+              ]}
+              onPress={handleDiscard}
+            >
+              <Ionicons
+                name="trash"
+                size={20}
+                color={t.danger}
+                style={s.modalBtnIcon}
+              />
+              <Text style={[s.modalBtnText, { color: t.danger }]}>
+                Buang Aktivitas
+              </Text>
+            </TouchableOpacity>
+          </Card>
         </View>
       </Modal>
 
-      <Modal visible={activityModalVisible} transparent animationType="fade">
-        <TouchableOpacity style={s.scrimOverlay} activeOpacity={1} onPress={() => setActivityModalVisible(false)}>
-          <View style={[s.activitySheet, { backgroundColor: t.card }]}>
-            <Text style={[s.sheetTitle, { color: t.text }]}>Pilih Kategori Gerakan</Text>
+      {/* Modal Pemilihan Aktivitas */}
+      <Modal visible={showActivityModal} transparent animationType="slide">
+        <View style={s.modalOverlayEnd}>
+          <Card theme={t} style={s.activityModalCard}>
+            <Text style={s.modalTitle}>Pilih Aktivitas</Text>
             {ACTIVITIES.map((act) => (
               <TouchableOpacity
                 key={act.key}
-                onPress={() => {
-                  setSelectedActivity(act);
-                  setActivityModalVisible(false);
-                }}
                 style={[
-                  s.activityOptionRow,
-                  selectedActivity.key === act.key && { backgroundColor: `${t.primary}15` },
+                  s.activityOption,
+                  tracker.activityKey === act.key && {
+                    backgroundColor: t.primary + "20",
+                  },
                 ]}
+                onPress={() => {
+                  tracker.setActivityKey(act.key);
+                  setShowActivityModal(false);
+                }}
               >
-                <Ionicons name={act.icon} size={22} color={selectedActivity.key === act.key ? t.primary : t.text} />
-                <Text style={[s.activityOptionText, { color: selectedActivity.key === act.key ? t.primary : t.text }]}>{act.label}</Text>
+                <View
+                  style={[
+                    s.activityIconWrap,
+                    {
+                      backgroundColor:
+                        tracker.activityKey === act.key ? t.primary : t.sub,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={act.icon}
+                    size={20}
+                    color={tracker.activityKey === act.key ? t.onPrimary : t.bg}
+                  />
+                </View>
+                <Text
+                  style={[
+                    s.activityOptionText,
+                    tracker.activityKey === act.key && {
+                      color: t.primary,
+                      fontWeight: "bold",
+                    },
+                  ]}
+                >
+                  {act.label}
+                </Text>
+                {tracker.activityKey === act.key && (
+                  <Ionicons name="checkmark" size={20} color={t.primary} />
+                )}
               </TouchableOpacity>
             ))}
-          </View>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={s.cancelBtn}
+              onPress={() => setShowActivityModal(false)}
+            >
+              <Text style={s.cancelBtnText}>Batal</Text>
+            </TouchableOpacity>
+          </Card>
+        </View>
       </Modal>
     </View>
   );
 }
 
-const createStyles = (t) =>
+const createStyles = (t, insets) =>
   StyleSheet.create({
-    root: { flex: 1, backgroundColor: t.bg },
-    mapContainer: { flex: 1, position: 'relative' },
-    webview: { flex: 1, backgroundColor: '#E2E8F0' },
-    anchoredPanel: { position: 'absolute', bottom: 14, left: 16, right: 16, zIndex: 10 },
-
-    centerBtnWrapper: { alignItems: 'flex-end', marginBottom: 14, paddingRight: 4 },
-    centerBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-
-    floatingHUD: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 18, marginBottom: 14, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 5 },
-    hudCol: { flex: 1, alignItems: 'center' },
-    hudValue: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
-    hudLabel: { fontSize: 9, fontWeight: '700', marginTop: 3, letterSpacing: 0.5 },
-    hudDivider: { width: 1, height: 28 },
-    actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
-    circleBtn: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 },
-    mainCenterBtn: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
-    scrimOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-    pauseSheet: { width: '100%', borderRadius: 22, padding: 20, alignItems: 'center' },
-    pauseHeader: { alignItems: 'center', marginBottom: 20 },
-    pauseBadge: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-    pauseTitle: { fontSize: 20, fontWeight: '800' },
-    pauseSubtitle: { fontSize: 13, marginTop: 4, fontWeight: '600' },
-    pauseActionWrap: { width: '100%', gap: 10 },
-    modalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 14 },
-    modalBtnText: { fontSize: 14, fontWeight: '700' },
-    activitySheet: { width: '100%', borderRadius: 20, padding: 18 },
-    sheetTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
-    activityOptionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, marginBottom: 6 },
-    activityOptionText: { fontSize: 15, fontWeight: '700' },
+    container: {
+      flex: 1,
+    },
+    map: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    mapLoading: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: t.bg,
+    },
+    centerBtn: {
+      position: "absolute",
+      right: 16,
+      top: insets.top + 64,
+      backgroundColor: t.card,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+      elevation: 4,
+      zIndex: 10,
+    },
+    topControls: {
+      position: "absolute",
+      top: insets.top + 10,
+      left: 16,
+      right: 16,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      zIndex: 10,
+    },
+    iconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: t.card,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: t.shadow || "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    activitySelector: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.card,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 20,
+      shadowColor: t.shadow || "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    activityText: {
+      marginHorizontal: 8,
+      color: t.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    bottomHudContainer: {
+      position: "absolute",
+      bottom: insets.bottom + 20,
+      left: 16,
+      right: 16,
+      zIndex: 10,
+    },
+    hudCard: {
+      padding: 16,
+      borderRadius: 24,
+      shadowColor: t.shadow || "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    metricsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    metricItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    metricDivider: {
+      width: 1,
+      height: 30,
+      backgroundColor: t.border,
+    },
+    metricLabel: {
+      fontSize: 12,
+      color: t.sub,
+      marginBottom: 4,
+      fontWeight: "600",
+    },
+    metricValue: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: t.text,
+      fontVariant: ["tabular-nums"],
+    },
+    actionRow: {
+      alignItems: "center",
+    },
+    mainButton: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: t.primary,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: t.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    },
+    pauseModalCard: {
+      width: "100%",
+      padding: 24,
+      borderRadius: 20,
+      alignItems: "center",
+    },
+    pauseModalTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: t.text,
+      marginBottom: 24,
+    },
+    modalBtn: {
+      flexDirection: "row",
+      width: "100%",
+      paddingVertical: 14,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    modalBtnIcon: {
+      marginRight: 8,
+    },
+    modalBtnText: {
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    modalOverlayEnd: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "flex-end",
+    },
+    activityModalCard: {
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 24,
+      paddingBottom: insets.bottom + 24 || 24,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: t.text,
+      marginBottom: 16,
+      textAlign: "center",
+    },
+    activityOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+    activityIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    activityOptionText: {
+      flex: 1,
+      fontSize: 16,
+      color: t.text,
+    },
+    cancelBtn: {
+      marginTop: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    cancelBtnText: {
+      fontSize: 16,
+      color: t.sub,
+      fontWeight: "600",
+    },
   });

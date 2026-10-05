@@ -13,33 +13,34 @@
 export const DEFAULT_WEIGHT_KG = 65;
 
 /** Aktivitas di bawah jarak ini (meter) tetap menampilkan ringkasan, tetapi tidak disimpan ke riwayat. */
-export const MIN_SAVE_DISTANCE_M = 20;
+export const MIN_SAVE_DISTANCE_M = 0;
 
 export const ACTIVITIES = [
   {
-    key: 'run',
-    label: 'Lari',
-    icon: 'walk',
+    key: "run",
+    label: "Lari",
+    icon: "walk",
     met: 9.8,
     gps: { maxAccuracy: 25, maxSpeed: 9, processNoise: 3, minStep: 5 },
   },
   {
-    key: 'bike',
-    label: 'Bersepeda',
-    icon: 'bicycle',
+    key: "bike",
+    label: "Bersepeda",
+    icon: "bicycle",
     met: 7.5,
     gps: { maxAccuracy: 25, maxSpeed: 20, processNoise: 6, minStep: 6 },
   },
   {
-    key: 'swim',
-    label: 'Berenang',
-    icon: 'water',
+    key: "swim",
+    label: "Berenang",
+    icon: "water",
     met: 6.0,
     gps: { maxAccuracy: 35, maxSpeed: 3, processNoise: 1.5, minStep: 5 },
   },
 ];
 
-export const getActivity = (key) => ACTIVITIES.find((a) => a.key === key) || ACTIVITIES[0];
+export const getActivity = (key) =>
+  ACTIVITIES.find((a) => a.key === key) || ACTIVITIES[0];
 
 /** kkal = MET x berat (kg) x jam */
 export const calculateCalories = (met, weightKg, durationSec) =>

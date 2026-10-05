@@ -56,6 +56,7 @@ export function TrackerProvider({ children }) {
   const [summary, setSummary] = useState(null);
   const [mapType, setMapType] = useState('standard'); // 'standard' | 'satellite'
   const [userLocation, setUserLocation] = useState(DEFAULT_REGION);
+  const [gpsLoaded, setGpsLoaded] = useState(false);
 
   // Ref = sumber kebenaran untuk callback asinkron (watcher, timer) agar tidak basi.
   const mountedRef = useRef(true);
@@ -135,6 +136,7 @@ export function TrackerProvider({ children }) {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (mountedRef.current && statusRef.current !== 'recording') {
           setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          setGpsLoaded(true);
         }
       }
     } catch (e) {
@@ -333,6 +335,7 @@ export function TrackerProvider({ children }) {
       mapType,
       setMapType,
       userLocation,
+      gpsLoaded,
       prepare,
       start,
       stop,
@@ -340,7 +343,7 @@ export function TrackerProvider({ children }) {
     }),
     [
       activityKey, setActivityKey, status, starting, route, distance, elapsed, permission,
-      summary, mapType, userLocation, prepare, start, stop, reset,
+      summary, mapType, userLocation, gpsLoaded, prepare, start, stop, reset,
     ]
   );
 
