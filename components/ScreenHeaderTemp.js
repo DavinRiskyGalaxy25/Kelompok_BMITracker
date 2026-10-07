@@ -1,11 +1,10 @@
 // components/ScreenHeader.js
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ScreenHeader({ theme: t, title, onBack, rightAction }) {
   // t.text otomatis #FAFAFA (putih) di dark mode dan #0F172A (gelap) di light mode
-  const textColor = t?.text || (t?.isDark ? '#FAFAFA' : '#0F172A');
+  const textColor = t?.text || (t?.isDark ? "#FFFFFF" : "#000000");
 
   return (
     <View style={styles.container}>
@@ -34,14 +33,14 @@ export default function ScreenHeader({ theme: t, title, onBack, rightAction }) {
 const styles = StyleSheet.create({
   container: {
     height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 8,
   },
   leftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   backButton: {
@@ -50,10 +49,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.3,
   },
   right: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
 });

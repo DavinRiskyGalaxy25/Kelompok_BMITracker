@@ -11,11 +11,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Card } from '../components/ui';
+import RunSummaryOverlay from '../components/RunSummaryOverlay';
 import { formatDateTime, formatDuration } from '../utils/format';
 import { getActivityHistory } from '../utils/storage';
 
 const DAYS_NAME = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 const DAYS_NAME_SHORT = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
+const MONTH_NAMES = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
 
 const getGreeting = (hour = new Date().getHours()) => {
   if (hour < 11) return 'Selamat pagi';
@@ -164,39 +169,9 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
         {/* RINGKASAN HASIL LARI TERAKHIR */}
         <Text style={s.sectionHeader}>Hasil Lari Terakhir</Text>
         {latestRun ? (
-          <Card theme={t} style={s.runCard}>
-            <View style={s.runHeader}>
-              <View style={s.runBadge}>
-                <Ionicons name="walk" size={16} color={t.onPrimary} />
-                <Text style={s.runBadgeText}>{latestRun.label || 'Sesi Lari'}</Text>
-              </View>
-              <Text style={s.runDate}>{formatDateTime(latestRun.date)}</Text>
-            </View>
-
-            <View style={s.mainMetricRow}>
-              <Text style={s.mainMetricValue}>{(Number(latestRun.km) || 0).toFixed(2)}</Text>
-              <Text style={s.mainMetricUnit}>km</Text>
-            </View>
-
-            <View style={s.metricGrid}>
-              <View style={s.metricCol}>
-                <Text style={s.metricLabel}>Pace</Text>
-                <Text style={s.metricVal}>{latestRun.pace || '--:--'}</Text>
-              </View>
-              <View style={s.metricDivider} />
-              <View style={s.metricCol}>
-                <Text style={s.metricLabel}>Durasi</Text>
-                <Text style={s.metricVal}>
-                  {formatDuration(latestRun.durationSec || latestRun.duration || 0)}
-                </Text>
-              </View>
-              <View style={s.metricDivider} />
-              <View style={s.metricCol}>
-                <Text style={s.metricLabel}>Kalori</Text>
-                <Text style={s.metricVal}>{latestRun.calories || 0} kcal</Text>
-              </View>
-            </View>
-          </Card>
+          <View style={s.edgeToEdge}>
+            <RunSummaryOverlay run={latestRun} theme={t} />
+          </View>
         ) : (
           <Card theme={t} style={s.emptyCard}>
             <Ionicons name="walk-outline" size={36} color={t.sub} />
@@ -222,7 +197,7 @@ export default function HomeScreen({ theme: t, user, setActiveScreen }) {
         <View style={s.modalOverlay}>
           <View style={[s.modalCard, { backgroundColor: t.card, borderColor: t.border }]}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Kalender Aktivitas</Text>
+              <Text style={s.modalTitle}>{MONTH_NAMES[new Date().getMonth()]} {new Date().getFullYear()}</Text>
               <TouchableOpacity onPress={() => setCalendarModalVisible(false)}>
                 <Ionicons name="close-circle" size={26} color={t.sub} />
               </TouchableOpacity>
@@ -294,6 +269,7 @@ const createStyles = (t) =>
     greetingWrap: { marginBottom: 18, marginTop: 4 },
     greetingTime: { fontSize: 13, color: t.sub, fontWeight: '600' },
     userName: { fontSize: 24, fontWeight: '800', color: t.text, marginTop: 2 },
+    edgeToEdge: { marginHorizontal: -16, marginBottom: 20 },
 
     streakCard: { padding: 14, marginBottom: 20 },
     streakHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },

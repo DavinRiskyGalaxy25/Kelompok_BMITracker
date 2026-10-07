@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Magnetometer } from "expo-sensors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,21 +13,30 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { Card } from "../components/ui";
-import usePedometer from "../hooks/usepedometer";
+
 import { useTracker } from "../hooks/usetracker";
 import { ACTIVITIES } from "../utils/activities";
 import { formatDuration } from "../utils/format";
 import { setRunSteps } from "../utils/rundata";
 
-export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
+export default function ActivityScreen({
+  theme: t,
+  user,
+  setActiveScreen,
+  canGoBack,
+  goBack,
+}) {
   const insets = useSafeAreaInsets();
   const s = useMemo(() => createStyles(t, insets), [t, insets]);
 
   const tracker = useTracker();
-  const pedometer = usePedometer();
 
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
+
+  const [heading, setHeading] = useState(0);
+  const headingRef = useRef(0);
+  const lastUpdateRef = useRef(0);
 
   // Initialize tracker on mount
   useEffect(() => {
@@ -34,16 +44,6 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
     return () => {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Sync pedometer with tracker
-  useEffect(() => {
-    if (tracker.isRecording) {
-      pedometer.startTracking();
-    } else {
-      pedometer.stopTracking();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tracker.isRecording]);
 
   const handleStart = () => {
     tracker.start();
@@ -59,7 +59,7 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
 
   const handleStopAndSave = async () => {
     setShowPauseModal(false);
-    setRunSteps(pedometer.steps || 0);
+    setRunSteps(tracker.steps || 0);
     await tracker.stop();
     setActiveScreen("runsummary");
   };
@@ -92,7 +92,8 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
   var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([${loc.latitude},${loc.longitude}],16);
   var tile=L.tileLayer('${initialTile}',{maxZoom:19,subdomains:'abc'}).addTo(map);
   var marker=null,routeLayer=L.layerGroup().addTo(map);
-  var icon=L.divIcon({className:'',html:'<div class="dot"></div>',iconSize:[18,18],iconAnchor:[9,9]});
+  var iconHtml='<div style="position:relative;width:80px;height:80px;"><div id="cone" style="position:absolute;top:0;left:0;width:100%;height:100%;transition:transform 0.1s linear;transform-origin:50% 50%;"><svg viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${t.primary}" stop-opacity="0.5"/><stop offset="100%" stop-color="${t.primary}" stop-opacity="0"/></linearGradient></defs><path d="M50 50 L20 0 A50 50 0 0 1 80 0 Z" fill="url(#g)"/></svg></div><div class="dot" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"></div></div>';
+  var icon=L.divIcon({className:'',html:iconHtml,iconSize:[80,80],iconAnchor:[40,40]});
 
   function handle(e){
     try{
@@ -101,6 +102,10 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
         if(!marker){marker=L.marker([d.lat,d.lng],{icon:icon,zIndexOffset:1000}).addTo(map)}
         else{marker.setLatLng([d.lat,d.lng])}
         map.panTo([d.lat,d.lng],{animate:true,duration:0.5});
+      }
+      if(d.type==='HEADING'){
+        var cone=document.getElementById('cone');
+        if(cone){cone.style.transform='rotate('+d.val+'deg)';}
       }
       if(d.type==='ROUTE'){
         routeLayer.clearLayers();
@@ -129,7 +134,7 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
     if (!webViewRef.current || !tracker.userLocation) return;
     const { latitude, longitude } = tracker.userLocation;
     webViewRef.current.injectJavaScript(
-      `if(typeof map!=='undefined'){map.setView([${latitude},${longitude}],16)}true;`
+      `if(typeof map!=='undefined'){map.setView([${latitude},${longitude}],16)}true;`,
     );
   }, [tracker.userLocation]);
 
@@ -151,6 +156,38 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
       });
     }
   }, [tracker.userLocation, sendToMap]);
+
+  // Compass Sensor
+  useEffect(() => {
+    let subscription;
+    Magnetometer.setUpdateInterval(16);
+    Magnetometer.isAvailableAsync().then((available) => {
+      if (!available) return;
+      subscription = Magnetometer.addListener((result) => {
+        let angle = Math.atan2(-result.x, result.y) * (180 / Math.PI);
+        if (angle < 0) angle += 360;
+
+        let current = headingRef.current;
+        let diff = angle - current;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+
+        let smoothed = current + diff * 0.25;
+        smoothed = (smoothed + 360) % 360;
+        headingRef.current = smoothed;
+
+        const now = Date.now();
+        if (now - lastUpdateRef.current > 16) {
+          lastUpdateRef.current = now;
+          setHeading(smoothed);
+          sendToMap({ type: "HEADING", val: smoothed });
+        }
+      });
+    });
+    return () => {
+      if (subscription) subscription.remove();
+    };
+  }, [sendToMap]);
 
   // Update route polyline
   useEffect(() => {
@@ -208,11 +245,18 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
         <Ionicons name="locate" size={22} color={t.primary} />
       </TouchableOpacity>
 
+      {/* Compass button */}
+      <TouchableOpacity style={s.compassBtn} onPress={handleCenterMap}>
+        <View style={{ transform: [{ rotate: `${heading - 45}deg` }] }}>
+          <Ionicons name="navigate" size={24} color={t.primary} />
+        </View>
+      </TouchableOpacity>
+
       {/* Top Header Controls */}
       <View style={s.topControls}>
         <TouchableOpacity
           style={s.iconButton}
-          onPress={() => setActiveScreen("home")}
+          onPress={() => (canGoBack ? goBack() : setActiveScreen("home"))}
           disabled={tracker.isRecording}
         >
           <Ionicons name="arrow-back" size={24} color={t.text} />
@@ -263,7 +307,7 @@ export default function ActivityScreen({ theme: t, user, setActiveScreen }) {
             <View style={s.metricDivider} />
             <View style={s.metricItem}>
               <Text style={s.metricLabel}>LANGKAH</Text>
-              <Text style={s.metricValue}>{pedometer.steps || 0}</Text>
+              <Text style={s.metricValue}>{tracker.steps || 0}</Text>
             </View>
             <View style={s.metricDivider} />
             <View style={s.metricItem}>
@@ -440,6 +484,23 @@ const createStyles = (t, insets) =>
       position: "absolute",
       right: 16,
       top: insets.top + 64,
+      backgroundColor: t.card,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+      elevation: 4,
+      zIndex: 10,
+    },
+    compassBtn: {
+      position: "absolute",
+      right: 16,
+      top: insets.top + 120,
       backgroundColor: t.card,
       width: 44,
       height: 44,

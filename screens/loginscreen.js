@@ -1,5 +1,5 @@
 // screens/loginscreen.js
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -9,22 +9,27 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Btn, Card, Field, SectionTitle } from '../components/ui';
-import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, normalizeEmail, validateLogin } from '../utils/validation';
-import { supabase } from '../utils/supabase'; // <-- KONEKSI SUPABASE
+import { Btn, Card, Field, SectionTitle } from "../components/ui";
+import { supabase } from "../utils/supabase"; // <-- KONEKSI SUPABASE
+import {
+  EMAIL_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  normalizeEmail,
+  validateLogin,
+} from "../utils/validation";
 
-const APP_NAME = 'VITASTRIDE';
+const APP_NAME = "VITASTRIDE";
 
 export default function LoginScreen({ theme: t, onRegister }) {
   const s = useMemo(() => createStyles(t), [t]);
   const insets = useSafeAreaInsets();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const passwordRef = useRef(null);
@@ -49,7 +54,7 @@ export default function LoginScreen({ theme: t, onRegister }) {
       return;
     }
 
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
@@ -62,31 +67,31 @@ export default function LoginScreen({ theme: t, onRegister }) {
       if (signInError) throw signInError;
       // Jika berhasil, Supabase akan memicu event otomatis ke App.js
     } catch (e) {
-      console.log('Login error:', e);
+      console.log("Login error:", e);
       let errorMsg = e.message;
-      if (errorMsg.includes('Invalid login credentials')) {
-        errorMsg = 'Email atau kata sandi yang Anda masukkan salah.';
+      if (errorMsg.includes("Invalid login credentials")) {
+        errorMsg = "Email atau kata sandi yang Anda masukkan salah.";
       }
-      if (mountedRef.current) setError(errorMsg || 'Gagal masuk. Coba lagi.');
+      if (mountedRef.current) setError(errorMsg || "Gagal masuk. Coba lagi.");
     } finally {
       if (mountedRef.current) setLoading(false);
     }
   }, [email, password, loading]);
 
   const handleForgotPassword = () => {
-    setError('Fitur reset kata sandi sedang dalam pengembangan.');
+    setError("Fitur reset kata sandi sedang dalam pengembangan.");
   };
 
   return (
     <View style={s.safe}>
       <KeyboardAvoidingView
         style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView 
-          contentContainerStyle={s.content} 
-          keyboardShouldPersistTaps="handled" 
-          keyboardDismissMode="on-drag" 
+        <ScrollView
+          contentContainerStyle={s.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <View style={s.header}>
@@ -95,17 +100,57 @@ export default function LoginScreen({ theme: t, onRegister }) {
           <SectionTitle theme={t} icon="log-in" title="Masuk" />
 
           <Card theme={t}>
-            <Field theme={t} label="Email" icon="mail-outline" value={email} onChangeText={setEmail} placeholder="Masukkan email" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="emailAddress" maxLength={EMAIL_MAX_LENGTH} returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => passwordRef.current?.focus()} editable={!loading} />
-            <Field ref={passwordRef} theme={t} label="Kata sandi" icon="lock-closed-outline" value={password} onChangeText={setPassword} placeholder="Masukkan kata sandi" secure autoCapitalize="none" autoCorrect={false} autoComplete="password" textContentType="password" maxLength={PASSWORD_MAX_LENGTH} returnKeyType="go" onSubmitEditing={handleLogin} editable={!loading} />
+            <Field
+              theme={t}
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              maxLength={EMAIL_MAX_LENGTH}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              editable={!loading}
+            />
+            <Field
+              ref={passwordRef}
+              theme={t}
+              label="Kata sandi"
+              value={password}
+              onChangeText={setPassword}
+              secure
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+              textContentType="password"
+              maxLength={PASSWORD_MAX_LENGTH}
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
+              editable={!loading}
+            />
 
-            <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7} style={s.forgot}>
+            <TouchableOpacity
+              onPress={handleForgotPassword}
+              activeOpacity={0.7}
+              style={s.forgot}
+            >
               <Text style={s.link}>Lupa kata sandi?</Text>
             </TouchableOpacity>
 
             {error ? <Text style={s.errorText}>{error}</Text> : null}
 
             <View style={s.actions}>
-              <Btn theme={t} label="Masuk" icon="log-in" onPress={handleLogin} loading={loading} />
+              <Btn
+                theme={t}
+                label="Masuk"
+                icon="log-in"
+                onPress={handleLogin}
+                loading={loading}
+              />
             </View>
           </Card>
 
@@ -121,18 +166,42 @@ export default function LoginScreen({ theme: t, onRegister }) {
   );
 }
 
-const createStyles = (t) => StyleSheet.create({ 
-  safe: { flex: 1, backgroundColor: t.bg }, 
-  flex: { flex: 1 }, 
-  content: { flexGrow: 1, justifyContent: 'center', padding: 16, paddingBottom: 20 }, 
-  header: { marginBottom: 28 }, 
-  // PERBAIKAN: Memastikan warna teks mengikuti tema t.text dan t.sub secara absolut
-  appName: { fontSize: 32, fontWeight: '900', fontFamily: t.fontBrand, letterSpacing: 1.5, textTransform: 'uppercase', color: t.text }, 
-  tagline: { fontSize: 14, color: t.sub, marginTop: 6 }, 
-  forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 12 }, 
-  link: { fontSize: 13, fontWeight: '700', color: t.primary }, 
-  errorText: { color: t.danger, fontSize: 13, fontWeight: '600', marginBottom: 12 }, 
-  actions: { gap: 10 }, 
-  registerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24 }, 
-  registerText: { fontSize: 13, color: t.sub } 
-});
+const createStyles = (t) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: t.bg },
+    flex: { flex: 1 },
+    content: {
+      flexGrow: 1,
+      justifyContent: "center",
+      padding: 16,
+      paddingBottom: 20,
+    },
+    header: { marginBottom: 28 },
+    // PERBAIKAN: Memastikan warna teks mengikuti tema t.text dan t.sub secara absolut
+    appName: {
+      fontSize: 32,
+      fontWeight: "900",
+      fontFamily: t.fontBrand,
+      letterSpacing: 1.5,
+      textTransform: "uppercase",
+      color: t.text,
+    },
+    tagline: { fontSize: 14, color: t.sub, marginTop: 6 },
+    forgot: { alignSelf: "flex-end", marginTop: -4, marginBottom: 12 },
+    link: { fontSize: 13, fontWeight: "700", color: t.primary },
+    errorText: {
+      color: t.danger,
+      fontSize: 13,
+      fontWeight: "600",
+      marginBottom: 12,
+    },
+    actions: { gap: 10 },
+    registerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 24,
+    },
+    registerText: { fontSize: 13, color: t.sub },
+  });

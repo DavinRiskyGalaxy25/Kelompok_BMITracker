@@ -42,6 +42,6 @@ export const ACTIVITIES = [
 export const getActivity = (key) =>
   ACTIVITIES.find((a) => a.key === key) || ACTIVITIES[0];
 
-/** kkal = MET x berat (kg) x jam */
-export const calculateCalories = (met, weightKg, durationSec) =>
-  Math.round(met * weightKg * (durationSec / 3600));
+/** Kalori ≈ BB (kg) x Jarak (km) x 0.5 */
+export const calculateCalories = (weightKg, distanceKm) =>
+  Math.round(weightKg * distanceKm * 0.5);

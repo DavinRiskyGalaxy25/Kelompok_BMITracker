@@ -33,13 +33,13 @@ import {
 } from '../utils/activities';
 import { formatDateTime, formatPace } from '../utils/format';
 import { compactRoute, createTrackFilter, toDisplayRoute } from '../utils/gps';
-import { addActivityEntry, getLatestWeightKg } from '../utils/storage';
+import { addActivityEntry, getLatestWeightKg, getLatestHeightCm } from '../utils/storage';
 
 const DEFAULT_REGION = { latitude: -6.2088, longitude: 106.8456 };
 
 const WATCH_OPTIONS = {
   accuracy: Location.Accuracy.BestForNavigation,
-  distanceInterval: 2,
+  distanceInterval: 1,
   timeInterval: 1000,
 };
 
@@ -52,6 +52,7 @@ export function TrackerProvider({ children }) {
   const [route, setRoute] = useState([]);
   const [distance, setDistance] = useState(0); // meter
   const [elapsed, setElapsed] = useState(0); // detik
+  const [steps, setSteps] = useState(0);
   const [permission, setPermission] = useState(null); // null = belum diketahui
   const [summary, setSummary] = useState(null);
   const [mapType, setMapType] = useState('standard'); // 'standard' | 'satellite'
@@ -70,6 +71,8 @@ export function TrackerProvider({ children }) {
   const routeRef = useRef([]);
   const filterRef = useRef(null);
   const weightRef = useRef(DEFAULT_WEIGHT_KG);
+  const heightRef = useRef(170); // default height cm
+  const stepsRef = useRef(0);
 
   const updateStatus = useCallback((next) => {
     statusRef.current = next;
@@ -98,9 +101,11 @@ export function TrackerProvider({ children }) {
     filterRef.current?.reset();
     filterRef.current = null;
     distanceRef.current = 0;
+    stepsRef.current = 0;
     routeRef.current = [];
     setRoute([]);
     setDistance(0);
+    setSteps(0);
     setElapsed(0);
     setSummary(null);
   }, [stopTracking]);
@@ -167,6 +172,10 @@ export function TrackerProvider({ children }) {
     if (result.delta > 0) {
       distanceRef.current += result.delta;
       setDistance(distanceRef.current);
+      const stepLengthCm = (heightRef.current || 170) * 0.414;
+      const calcSteps = Math.floor((distanceRef.current * 100) / stepLengthCm);
+      stepsRef.current = calcSteps;
+      setSteps(calcSteps);
     }
 
     const nextRoute = routeRef.current.concat(result.point);
@@ -220,8 +229,9 @@ export function TrackerProvider({ children }) {
       const filter = createTrackFilter(activity.gps);
       filterRef.current = filter;
       weightRef.current = (await getLatestWeightKg()) ?? DEFAULT_WEIGHT_KG;
+      heightRef.current = (await getLatestHeightCm()) ?? 170;
 
-      const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation });
       if (!mountedRef.current) return;
 
       // Titik awal ikut disaring; bila akurasinya buruk, rute mulai dari titik layak pertama.
@@ -274,7 +284,7 @@ export function TrackerProvider({ children }) {
     const distanceM = distanceRef.current;
     const km = distanceM / 1000;
     const activity = getActivity(activityKeyRef.current);
-    const calories = calculateCalories(activity.met, weightRef.current, durationSec);
+    const calories = calculateCalories(weightRef.current, km);
     const pace = formatPace(durationSec, km);
     const speed = km > 0 ? km / (durationSec / 3600) : 0;
     const now = new Date();
@@ -303,6 +313,7 @@ export function TrackerProvider({ children }) {
       calories,
       pace,
       speed: Number(speed.toFixed(2)),
+      steps: stepsRef.current,
       route: compactRoute(rawRoute),
       date: now.toISOString(),
     });
@@ -328,7 +339,7 @@ export function TrackerProvider({ children }) {
       isRecording: status === 'recording',
       starting,
       route,
-      distance,
+      distance, steps,
       elapsed,
       permission,
       summary,
@@ -342,7 +353,7 @@ export function TrackerProvider({ children }) {
       reset,
     }),
     [
-      activityKey, setActivityKey, status, starting, route, distance, elapsed, permission,
+      activityKey, setActivityKey, status, starting, route, distance, steps, elapsed, permission,
       summary, mapType, userLocation, gpsLoaded, prepare, start, stop, reset,
     ]
   );

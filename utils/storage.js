@@ -157,6 +157,12 @@ export async function getLatestWeightKg() {
   return Number.isFinite(weight) && weight >= 10 && weight <= 500 ? weight : null;
 }
 
+export async function getLatestHeightCm() {
+  const [latest] = await getBmiHistory();
+  const height = Number(latest?.height);
+  return Number.isFinite(height) && height >= 50 && height <= 250 ? height : 170; // default 170 cm
+}
+
 // =========================================================================
 // ALIAS COMPATIBILITY (Mencegah crash jika mapscreen lama memanggil fungsi ini)
 // =========================================================================

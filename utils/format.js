@@ -4,7 +4,6 @@
 
 const pad = (n) => String(n).padStart(2, '0');
 
-/** Detik -> "mm:ss" (menit tidak dibatasi 59, mis. 75:12 untuk 1 jam 15 menit). */
 export const formatDuration = (sec) => {
   const total = Math.max(0, Math.floor(Number(sec) || 0));
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
@@ -12,7 +11,6 @@ export const formatDuration = (sec) => {
 
 const MAX_PACE_SEC = 99 * 60 + 59;
 
-/** Pace "m:ss" per km. Mengembalikan "--:--" bila jarak terlalu kecil atau pace tidak masuk akal. */
 export const formatPace = (durationSec, km) => {
   if (!(km >= 0.01)) return '--:--';
   const total = Math.round(durationSec / km);
@@ -20,12 +18,26 @@ export const formatPace = (durationSec, km) => {
   return `${Math.floor(total / 60)}:${pad(total % 60)}`;
 };
 
-/** "30 Sep 2026, 14.05" (locale id-ID) */
-export const formatDateTime = (date = new Date()) =>
-  new Date(date).toLocaleString('id-ID', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+export const formatDateTime = (dateStr) => {
+  let d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d.getTime()) && typeof dateStr === 'string') {
+    // Attempt to parse common localized strings like DD/MM/YYYY or DD-MM-YYYY
+    const parts = dateStr.match(/(\d+)[-/](\d+)[-/](\d+)/);
+    if (parts) {
+      // Assuming DD/MM/YYYY
+      d = new Date(`${parts[3]}-${parts[2]}-${parts[1]}T12:00:00Z`);
+    }
+  }
+  if (isNaN(d.getTime())) {
+    d = new Date(); // If all else fails, use today so it never shows invalid
+  }
+  
+  const day = pad(d.getDate());
+  const month = MONTHS[d.getMonth()];
+  const year = d.getFullYear();
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${day} ${month} ${year}, ${hours}.${minutes}`;
+};
